@@ -1,0 +1,22 @@
+import(doRNG)
+
+export(func_gamma)
+export(func_eta)
+export(func_epsilon)
+export(func_tau)
+
+export(run_m)
+export(fit_p)
+export(rev_e)
+export(rcv_d)
+
+export(optimize_para)
+export(simulate_list)
+export(recovery_data)
+
+export(TD)
+export(RSTD)
+export(Utility)
+
+S3method(summary, binaryRL)
+export(summary.binaryRL)
