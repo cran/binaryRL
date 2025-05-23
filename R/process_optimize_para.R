@@ -1,35 +1,43 @@
-#' Fit Parameters
+#' Process: Optimizing Parameters
 #' 
 #' @description
-#' This function is an internal function of `fit_p` We isolate it from direct use
-#'  by capable users.
+#'  This function is an internal function of `fit_p`. 
+#'  We isolate it from direct use by capable users.
 #'
-#'  The function provides four optimization algorithms: 
-#' 
-#'    1. L-BFGS-B (from `stats::optim`); 
-#'    2. Simulated Annealing (`GenSA::GenSA`); 
-#'    3. Genetic Algorithm (`GA::ga`); 
-#'    4. Differential Evolution (`DEoptim::DEoptim`); 
-#'    5. Bayesian Optimization (`mlrMBO::mbo`); 
-#'    6. Particle Swarm Optimization (`pso::psoptim`); 
-#'    7. Covariance Matrix Adapting Evolutionary Strategy (`cmaes::cma_es`); 
-#' 
+#'  The function provides several optimization algorithms:
+#'   \itemize{
+#'     \item 1. L-BFGS-B (from `stats::optim`);
+#'     \item 2. Simulated Annealing (`GenSA`);
+#'     \item 3. Genetic Algorithm (`GA`);
+#'     \item 4. Differential Evolution (`DEoptim`);
+#'     \item 5. Particle Swarm Optimization (`pso`);
+#'     \item 6. Bayesian Optimization (`mlrMBO`);
+#'     \item 7. Covariance Matrix Adapting Evolutionary Strategy (`cmaes`);
+#'     \item 8. Nonlinear Optimization (`nloptr`)
+#'   }
+#'
 #'  For more information, please refer to the GitHub repository:
 #'  https://github.com/yuki-961004/binaryRL
 #' 
 #' @param data [data.frame] raw data. 
 #'  This data should include the following mandatory columns: 
-#'  - "sub", "time_line", "L_choice", "R_choice", "L_reward", "R_reward". 
+#'   \itemize{
+#'     \item "sub"
+#'     \item "time_line" (e.g., "Block", "Trial")
+#'     \item "L_choice"
+#'     \item "R_choice"
+#'     \item "L_reward"
+#'     \item "R_reward"
+#'     \item "sub_choose"
+#'   }
 #'  
 #' @param id [integer] which subject is going to be analyzed.
 #'  is being analyzed. The value should correspond to an entry in the "sub" 
 #'  column, which must contain the subject IDs. 
 #'  e.g., `id = 18`
 #' 
-#' @param obj_func [function] a function with only ONE argument `params`. 
-#'  Additionally, it is important to note that the data needs to be retrieved 
-#'  from fit_env() and the results passed back to fit_env(). 
-#'  This function returns the log likelihood (logL).
+#' @param obj_func [function] A function with only ONE argument `params`.
+#'  Refer to `binaryRL::TD` to mimic the establishment of an objective function.
 #'  
 #' @param n_params [integer] The number of free parameters in your model. 
 #' 
@@ -53,8 +61,13 @@
 #'  reproducible and remain the same each time the function is run. 
 #'  default: `seed = 123` 
 #'  
-#' @param algorithm [character] Choose a algorithm package from 
-#'  `L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `Bayesian`, `PSO`, `CMA-ES`
+#' @param algorithm [character] Choose an algorithm package from
+#'  `L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `PSO`, `Bayesian`, `CMA-ES`.
+#'  In addition, any algorithm from the `nloptr` package is also
+#'  supported. If your chosen `nloptr` algorithm requires a local search,
+#'  you need to input a character vector. The first element represents
+#'  the algorithm used for global search, and the second element represents
+#'  the algorithm used for local search.
 #' 
 #' @returns the result of binaryRL with optimal parameters
 #' @export
@@ -93,175 +106,201 @@ optimize_para <- function(
   
   set.seed(seed)
   
-  result <- switch(
-    algorithm,
-    "L-BFGS-B" = {
-      stats::optim(
-        par = initial_params,
-        method = "L-BFGS-B",
-        fn = obj_func,
-        lower = lower,
-        upper = upper,
-        control = list(
-          maxit = iteration
-        )
+  if (algorithm[[1]] == "L-BFGS-B") {
+    result <- stats::optim(
+      par = initial_params,
+      method = "L-BFGS-B",
+      fn = obj_func,
+      lower = lower,
+      upper = upper,
+      control = list(
+        maxit = iteration
       )
-    },
-    "GenSA" = {
-      check_dependency("GenSA", algorithm_name = "Simulated Annealing")
-      
-      GenSA::GenSA(
-        fn = obj_func,
-        par = initial_params,
-        lower = lower,
-        upper = upper,
-        control = list(
-        maxit = iteration,
-          seed = seed
-        )
-      )
-    },
-    "GA" = {
-      check_dependency("GA", algorithm_name = "Genetic Algorithm")
-      
-      GA::ga(
-        type = "real-valued",
-        fitness = function(x) -obj_func(x),
-        popSize = initial_size,
-        lower = lower,
-        upper = upper,
-        maxiter = iteration,
-        monitor = FALSE
-        #parallel = TRUE
-      )
-    },
-    "DEoptim" = {
-      check_dependency("DEoptim", algorithm_name = "Differential Evolution")
-      
-      DEoptim::DEoptim(
-        fn = obj_func,
-        lower = lower,
-        upper = upper,
-        control = DEoptim::DEoptim.control(
-          NP = initial_size,
-          itermax = iteration,
-          trace = FALSE
-          #parallelType = "parallel"
-          #packages = "binaryRL"
-        )
-      )
-    },
-    "Bayesian" = {
-      required_pkgs <- c("mlrMBO", "mlr", "ParamHelpers", "smoof", "lhs")
-      check_dependency(required_pkgs, algorithm_name = "Bayesian Optimization")
-      
-      param_list <- lapply(
-        1:n_params, function(i) {
-          ParamHelpers::makeNumericParam(
-            id = paste0("param_", i),
-            lower = lower[i],
-            upper = upper[i]
-          )
-        }
-      )
+    )
+  } 
+  else if (algorithm[[1]] == "GenSA") {
+    check_dependency("GenSA", algorithm_name = "Simulated Annealing")
     
-      bys_func <- smoof::makeSingleObjectiveFunction(
-        fn = obj_func,
-        par.set = ParamHelpers::makeParamSet(params = param_list)
+    result <- GenSA::GenSA(
+      fn = obj_func,
+      par = initial_params,
+      lower = lower,
+      upper = upper,
+      control = list(
+        maxit = iteration,
+        seed = seed
       )
-      
-      suppressWarnings(
-        mlrMBO::mbo(
-          fun = bys_func, 
-          design = ParamHelpers::generateDesign(
-            n = initial_size, 
-            par.set = ParamHelpers::getParamSet(bys_func), 
-            fun = lhs::maximinLHS
-          ), 
-          control = mlrMBO::setMBOControlInfill(
-            mlrMBO::setMBOControlTermination(
-              control = mlrMBO::makeMBOControl(),
-              iters = iteration
-            ),
-            opt.focussearch.maxit = max(floor(1000 / iteration), 5)
+    )
+  } 
+  else if (algorithm[[1]] == "GA") {
+    check_dependency("GA", algorithm_name = "Genetic Algorithm")
+    
+    result <- GA::ga(
+      type = "real-valued",
+      fitness = function(x) -obj_func(x),
+      popSize = initial_size,
+      lower = lower,
+      upper = upper,
+      maxiter = iteration,
+      monitor = FALSE
+      #parallel = TRUE
+    )
+  } 
+  else if (algorithm[[1]] == "DEoptim") {
+    check_dependency("DEoptim", algorithm_name = "Differential Evolution")
+    
+    result <- DEoptim::DEoptim(
+      fn = obj_func,
+      lower = lower,
+      upper = upper,
+      control = DEoptim::DEoptim.control(
+        NP = initial_size,
+        itermax = iteration,
+        trace = FALSE
+        #parallelType = "parallel"
+        #packages = "binaryRL"
+      )
+    )
+  }
+  else if (algorithm[[1]] == "Bayesian") {
+    required_pkgs <- c(
+      "mlrMBO", "mlr", "ParamHelpers", "smoof", "lhs",
+      "DiceKriging", "rgenoud"
+    )
+    check_dependency(required_pkgs, algorithm_name = "Bayesian Optimization")
+    
+    param_list <- lapply(
+      1:n_params, function(i) {
+        ParamHelpers::makeNumericParam(
+          id = paste0("param_", i),
+          lower = lower[i],
+          upper = upper[i]
+        )
+      }
+    )
+    
+    bys_func <- smoof::makeSingleObjectiveFunction(
+      fn = obj_func,
+      par.set = ParamHelpers::makeParamSet(params = param_list)
+    )
+    
+    suppressWarnings(
+      result <- mlrMBO::mbo(
+        fun = bys_func, 
+        design = ParamHelpers::generateDesign(
+          n = initial_size, 
+          par.set = ParamHelpers::getParamSet(bys_func), 
+          fun = lhs::maximinLHS
+        ), 
+        control = mlrMBO::setMBOControlInfill(
+          mlrMBO::setMBOControlTermination(
+            control = mlrMBO::makeMBOControl(),
+            iters = iteration
           ),
-          show.info = FALSE
-        )
+          opt.focussearch.maxit = 10
+        ),
+        show.info = FALSE
       )
-    },
-    "PSO" = {
-      check_dependency("pso", algorithm_name = "Particle Swarm Optimization")
-
-      pso::psoptim(
-        par = initial_params,
-        fn = obj_func,
-        lower = lower,
-        upper = upper,
-        control = list(
-          maxit = iteration,
-          trace = 0
-        )
+    )
+  }
+  else if (algorithm[[1]] == "PSO") {
+    check_dependency("pso", algorithm_name = "Particle Swarm Optimization")
+    
+    result <- pso::psoptim(
+      par = initial_params,
+      fn = obj_func,
+      lower = lower,
+      upper = upper,
+      control = list(
+        maxit = iteration,
+        trace = 0
       )
-    },
-    "CMA-ES" = {
-      check_dependency("cmaes", algorithm_name = "Covariance Matrix Adapting")
-      
-      cmaes::cma_es(
-        par = initial_params,
-        fn = obj_func,
-        lower = lower,
-        upper = upper,
-        control = list(
-          maxit = iteration
-        )
+    )
+  }
+  else if (algorithm[[1]] == "CMA-ES") {
+    check_dependency("cmaes", algorithm_name = "Covariance Matrix Adapting")
+    
+    result <- cmaes::cma_es(
+      par = initial_params,
+      fn = obj_func,
+      lower = lower,
+      upper = upper,
+      control = list(
+        maxit = iteration
       )
-    },
-   { # 停止（如果 algorithm 不匹配任何已知值）
-      stop("
-        Choose a algorithm from 
-        `L-BFGS-B`, `GenSA`, 
-        `GA`, `DEoptim`,
-        `Bayesian`, `PSO`,
-        `CMA-ES`
-      ")
+    )
+  }
+  else if (startsWith(algorithm[[1]], "NLOPT_")) {
+    check_dependency("nloptr", algorithm_name = "Nonlinear Optimization")
+    
+    if (length(algorithm) > 1) {
+      local_opts <- list(
+        algorithm = algorithm[[2]], 
+        xtol_rel = 1.0e-8            
+      )
+    } else {
+      local_opts <- NULL
     }
-  )
-
-  switch(
-    algorithm,
-    "L-BFGS-B" = {
-     fit_params <- as.vector(result$par)
-    },
-    "GA" = {
-      fit_params <- as.vector(result@solution[1,])
-    },
-    "GenSA" = {
-      fit_params <- as.vector(result$par)
-    },
-    "DEoptim" = {
-      fit_params <- as.vector(result$optim$bestmem)
-    },
-    "Bayesian" = {
-      fit_params <- as.vector(
-        as.numeric(result$final.opt.state$opt.result$mbo.result$x)
+    
+    result <- nloptr::nloptr(
+      x0 = initial_params,
+      eval_f = obj_func,
+      lb = lower,
+      ub = upper,
+      opts = list(
+        algorithm = algorithm[[1]], 
+        local_opts = local_opts,
+        maxeval = iteration
       )
-    },
-    "PSO" = {
-      fit_params <- as.vector(result$par)
-    },
-    "CMA-ES" = {
-      fit_params <- as.vector(result$par)
-    },
-    {
+    )
+  }
+  else {
     stop("
-        Choose a algorithm from 
-        `L-BFGS-B`, `GenSA`, 
-        `GA`, `DEoptim`,
-        `Bayesian`, `PSO`,
-        `CMA-ES`
-      ")
-    }
-  )
+      Choose a algorithm from 
+      `L-BFGS-B`, `GenSA`, 
+      `GA`, `DEoptim`,
+      `Bayesian`, `PSO`,
+      `CMA-ES`, `NLOPT_`
+    ")
+  }
+  
+
+  if (algorithm[[1]] == "L-BFGS-B") {
+    fit_params <- as.vector(result$par)
+  }
+  else if (algorithm[[1]] == "GenSA") {
+    fit_params <- as.vector(result$par)
+  }
+  else if (algorithm[[1]] == "GA") {
+    fit_params <- as.vector(result@solution[1,])
+  }
+  else if (algorithm[[1]] == "DEoptim") {
+    fit_params <- as.vector(result$optim$bestmem)
+  }
+  else if (algorithm[[1]] == "Bayesian") {
+    fit_params <- as.vector(
+      as.numeric(result$final.opt.state$opt.result$mbo.result$x)
+    )
+  }
+  else if (algorithm[[1]] == "PSO") {
+    fit_params <- as.vector(result$par)
+  }
+  else if (algorithm[[1]] == "CMA-ES") {
+    fit_params <- as.vector(result$par)
+  }
+  else if (startsWith(algorithm[[1]], "NLOPT_")) {
+    fit_params <- as.vector(result$solution)
+  }
+  else {
+    stop("
+      Choose a algorithm from 
+      `L-BFGS-B`, `GenSA`, 
+      `GA`, `DEoptim`,
+      `Bayesian`, `PSO`,
+      `CMA-ES`, `NLOPT_`
+    ")
+  }
+  
   # 用找到的最佳参数带回到obj_func中
   obj_func(params = fit_params)
   # obj_func会给binaryRL.env传入一个binaryRL.res
