@@ -88,8 +88,8 @@
 
 fit_p <- function(
   data,
-  id = c(1:40),
-  n_trials,
+  id = NULL,
+  n_trials = NULL,
   fit_model = list(TD, RSTD, Utility),
   funcs = NULL,
   model_name = c("TD", "RSTD", "Utility"),
@@ -102,6 +102,18 @@ fit_p <- function(
   nc = 1,
   algorithm
 ){
+  # 事前准备. 探测信息
+  info <- suppressWarnings(suppressMessages(detect_information(data = data)))
+  
+  if (is.null(n_trials)) {
+    n_trials <- info[["n_trials"]]
+  }
+  
+  if (is.null(id)) {
+    id <- info[["all_ids"]]
+  }
+  
+  # 创建空list用于储存结果
   model_comparison <- list()
   model_result <- list()
   
@@ -174,7 +186,12 @@ fit_p <- function(
         "\n"
       ))
       
-      future::plan(future::multisession, workers = nc)
+      if (base::.Platform$OS.type == "windows") {
+        future::plan(future::multisession, workers = nc)
+      } else { # 包括 macOS, Linux, Unix
+        future::plan(future::multicore, workers = nc)
+      }
+      
       doFuture::registerDoFuture()
       
       n_subjects <- length(id)
