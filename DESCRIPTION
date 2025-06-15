@@ -1,5 +1,5 @@
 Package: binaryRL
-Version: 0.8.7
+Version: 0.8.9
 Title: Reinforcement Learning Tools for Two-Alternative Forced Choice
         Tasks
 Description: Tools for building reinforcement learning (RL) models
@@ -32,7 +32,7 @@ Imports: future, doFuture, foreach, doRNG, progressr
 Suggests: stats, GenSA, GA, DEoptim, pso, mlrMBO, mlr, ParamHelpers,
         smoof, lhs, DiceKriging, rgenoud, cmaes, nloptr
 NeedsCompilation: no
-Packaged: 2025-06-10 11:53:05 UTC; hmz19
+Packaged: 2025-06-13 10:06:04 UTC; hmz19
 Author: YuKi [aut, cre] (ORCID: <https://orcid.org/0009-0000-1378-1318>)
 Repository: CRAN
-Date/Publication: 2025-06-10 12:10:07 UTC
+Date/Publication: 2025-06-15 09:10:02 UTC

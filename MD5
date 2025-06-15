@@ -1,6 +1,6 @@
-0945e1367fcc890579bf8e4dc34355e4 *DESCRIPTION
+823a47baccbfa69c23bd276a83773e9c *DESCRIPTION
 f61b61d36bc85de304db94251de1fa98 *NAMESPACE
-ddc47d9b6e58e2e706ab21d0edb225d3 *R/1_unique_choice.R
+3af2d31ad1da006f35b1f5b79fad6c78 *R/1_unique_choice.R
 40c61cbd0f6a7817931643a352b0cbbd *R/2_arrange_data.R
 e680207f6663c851e85e080d4ede5e28 *R/3_add_NA.R
 edb058c9d02dc85e6564ff7b5cbe4025 *R/4_set_initial_value.R
@@ -24,7 +24,7 @@ d97a609a2ec214a9913aa7fa6d7ceb65 *R/process_recovery_data.R
 2b7113ffd696329715d596934ff7a995 *R/step1_run_m.R
 f146bfd91dff2b69a409b86a9a6f52ee *R/step2_rcv_d.R
 674061261e234487701c1b2c99ea7afa *R/step3_fit_p.R
-1830a7dfac6338f6b7a192bcba6e5950 *R/step4_rep_e.R
+f4b45bcade607fec165d9ed3e6c3112d *R/step4_rpl_e.R
 83b97b0b998cf2a43a4b66903a7a206d *R/summary.binaryRL.R
 31f7ce9ab7851184723524cb28a0a608 *R/zzz.R
 8bd2fc71da1b7ef4d4588cffa38917f8 *data/Mason_2024_Exp1.rda
@@ -42,7 +42,7 @@ d330d2d02b63cc4b34c5a60d3bc11184 *man/func_tau.Rd
 bada271c9049720e3802cead372cf0a9 *man/optimize_para.Rd
 3e5da9334b9af1c0ffa0394549f7481e *man/rcv_d.Rd
 3a55f5ece90e4e9c2728a05979cfeb9a *man/recovery_data.Rd
-783ac78e4d40757df38741d93a850d70 *man/rpl_e.Rd
+118b2729a9e1af100d611751b352435c *man/rpl_e.Rd
 0f5faa683cb9b5f6958a4494bb235aa6 *man/run_m.Rd
 b4097e537b86df60edb8b486ddeb7a83 *man/simulate_list.Rd
 ed9460f7173385c1b986f186fa6495d9 *man/summary.binaryRL.Rd
