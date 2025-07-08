@@ -4,19 +4,43 @@
 #' @param ... others
 #'
 #' @return summary
-#' 
+#' @export
 #' 
 summary.binaryRL <- function(object, ...) {
-  cat("Results of the Reinforcement Learning Model:\n")
-  
+
   object$data <- NULL
   
-  cat("\nParameters:\n")
+  if (is.na(object$params$EV_1)) {
+    message(
+      paste0(
+        "Preconditions for this fitting:", "\n",
+        " - Initial value of options: ", "Initial reward received", "\n",
+        " - Random choice threshold: ", object$params$threshold, "\n",
+        "\n"
+      )
+    )
+  } else {
+    message(
+      paste0(
+        "Preconditions for this fitting:", "\n",
+        " - Initial value of options: ", object$params$EV_1, "\n",
+        " - Random choice threshold: ", object$params$threshold, "\n",
+        "\n"
+      )
+    )
+  }
   
-  cat("  ", "\u03BB: ", round(object$params$lambda, 3), "\n")
+  cat("Results of the Reinforcement Learning Model:\n")
+  
+  cat("\nFree Parameters:\n")
+  
+  cat("  ", "\u03B1: ", round(object$params$alpha, 3), "\n")
+  cat("  ", "\u03B2: ", round(object$params$beta, 3), "\n")  
   cat("  ", "\u03B3: ", round(object$params$gamma, 3), "\n")
   cat("  ", "\u03B7: ", round(object$params$eta, 3), "\n")
   cat("  ", "\u03B5: ", round(object$params$epsilon, 3), "\n")
+  cat("  ", "\u03BB: ", round(object$params$lambda, 3), "\n")
+  cat("  ", "\u03C0: ", round(object$params$pi, 3), "\n")
   cat("  ", "\u03C4: ", round(object$params$tau, 3), "\n")
   
   
@@ -41,14 +65,15 @@ summary.binaryRL <- function(object, ...) {
   
   # 根据最大值数目动态创建 Value 列
   for (i in 1:max_values) {
-    param_list[[paste("Value", i, sep = "")]] <- sapply(object$params, function(param) {
-      if (length(param) >= i) {
-        return(round(param[i], 5))  # 取第 i 个值并保留5位小数
-      } else {
-        return(NA)  # 如果参数没有第 i 个值，填充 NA
-      }
-    })
-  }
+    param_list[[paste("Value", i, sep = "")]] <- sapply(
+      object$params, function(param) {
+        if (length(param) >= i) {
+          return(round(param[i], 5))  # 取第 i 个值并保留5位小数
+        } else {
+          return(NA)  # 如果参数没有第 i 个值，填充 NA
+        }
+      })
+    }
   
   # 将 param_list 转换为数据框
   params_df <- as.data.frame(param_list)

@@ -4,50 +4,145 @@
 \alias{func_tau}
 \title{Function: Soft-Max Function}
 \usage{
-func_tau(LR, try, L_value, R_value, var1 = NA, var2 = NA, tau = 1, lambda)
+func_tau(
+  i,
+  L_freq,
+  R_freq,
+  L_pick,
+  R_pick,
+  L_value,
+  R_value,
+  var1 = NA,
+  var2 = NA,
+  LR,
+  try,
+  tau = 1,
+  alpha,
+  beta
+)
 }
 \arguments{
-\item{LR}{Are you calculating the probability for the left option or the 
-right option?}
+\item{i}{The current row number.}
 
-\item{try}{If the choice was random, the value is 1; if the choice was 
-based on value, the value is 0.}
+\item{L_freq}{The frequency of left option appearance}
 
-\item{L_value}{The value of the left option}
+\item{R_freq}{The frequency of right option appearance}
 
-\item{R_value}{The value of the right option}
+\item{L_pick}{The number of times left option was picked}
 
-\item{var1}{[character] column name of extra variable 1. If your model uses 
-more than just reward and expected value, and you need other information, 
-such as whether the choice frame is Gain or Loss, then you can input the 
-'Frame' column as var1 into the model.
-e.g., `var1 = "Extra_Var1"`}
+\item{R_pick}{The number of times left option was picked}
 
-\item{var2}{[character] column name of extra variable 2. If one additional 
-variable, var1, does not meet your needs, you can add another additional 
-variable, var2, into your model.
-e.g., `var2 = "Extra_Var2"`}
+\item{L_value}{The value of the left option with bias (if pi != 0)}
 
-\item{tau}{[vector] Parameters used in the Soft-Max Function 
-`prob_func` representing the sensitivity of the subject to the value 
- difference when making decisions. It determines the probability of selecting 
- the left option versus the right option based on their values. A larger 
- value of tau indicates greater sensitivity to the value difference between 
- the options. In other words, even a small difference in value will make the 
- subject more likely to choose the higher-value option. 
- e.g., `tau = c(0.5)`}
+\item{R_value}{The value of the right option with bias (if pi != 0)}
 
-\item{lambda}{[vector] Extra parameters that may be used in functions. 
-e.g., `lambda = c(0.4, 0.7, 20, 60)`}
+\item{var1}{[character] 
+Column name of extra variable 1. If your model uses more than just reward 
+ and expected value, and you need other information, such as whether the 
+ choice frame is Gain or Loss, then you can input the 'Frame' column as 
+ var1 into the model.
+ 
+ \code{default: var1 = "Extra_Var1"}}
+
+\item{var2}{[character] 
+Column name of extra variable 2. If one additional variable, var1, does not 
+ meet your needs, you can add another additional variable, var2, into your 
+ model.
+ 
+ \code{default: var2 = "Extra_Var2"}}
+
+\item{LR}{Are you calculating the probability for the left option or the right option?}
+
+\item{try}{If the choice was random, the value is 1; 
+If the choice was based on value, the value is 0.}
+
+\item{tau}{[vector] 
+Parameters used in the Soft-Max Function. `prob_func` representing the 
+ sensitivity of the subject to the value difference when making decisions. 
+ It determines the probability of selecting the left option versus the right 
+ option based on their values. A larger value of tau indicates greater 
+ sensitivity to the value difference between the options. In other words, 
+ even a small difference in value will make the subject more likely to 
+ choose the higher-value option. 
+ 
+ \deqn{
+   P_L = \frac{1}{1+e^{-(V_L-V_R) \cdot \tau}}; 
+   P_R = \frac{1}{1+e^{-(V_R-V_L) \cdot \tau}}
+ } 
+
+ \code{e.g., tau = c(0.5)}}
+
+\item{alpha}{[vector]
+Extra parameters that may be used in functions.}
+
+\item{beta}{[vector]
+Extra parameters that may be used in functions.}
 }
 \value{
 The probability of choosing this option
 }
 \description{
-Function: Soft-Max Function
+The softmax function describes a probabilistic choice rule. It implies
+ that options with higher subjective values are chosen with a greater
+ probability, rather than deterministic. This probability of choosing
+ the higher-valued option increases with the parameter \code{tau}.
+ A higher \code{tau} indicates greater sensitivity to value differences, making
+ choices more deterministic.
 }
 \note{
 When customizing these functions, please ensure that you do not modify 
-the arguments. Instead, only modify the `if-else` statements or the internal 
-logic to adapt the function to your needs.
+ the arguments. Instead, only modify the `if-else` statements or the internal 
+ logic to adapt the function to your needs.
+}
+\examples{
+\dontrun{
+func_tau <- function(
+  # Trial number
+  i,
+  # Number of times this option has appeared
+  L_freq,
+  R_freq,
+  # Number of times this option has been chosen
+  L_pick,
+  R_pick,
+  # Current value of this option
+  L_value,
+  R_value,
+  # Extra variables
+  var1 = NA,
+  var2 = NA,
+  
+  # Whether calculating probability for left or right choice
+  LR,
+  # Is it a random choosing trial?
+  try,
+  
+  # Free parameter
+  tau = 1,
+  # Extra parameters
+  alpha,
+  beta
+){
+  if (!(LR \%in\% c("L", "R"))) {
+    stop("LR = 'L' or 'R'")
+  }
+############################### [ value-based ] #############################
+  else if (try == 0 & LR == "L") {
+    prob <- 1 / (1 + exp(-(L_value - R_value) * tau))
+  }
+  else if (try == 0 & LR == "R") {
+    prob <- 1 / (1 + exp(-(R_value - L_value) * tau))
+  }
+################################# [ random ] ################################
+  else if (try == 1) {
+    prob <- 0.5
+  }
+  else {
+    prob <- "ERROR" # Error check
+  }
+
+  return(prob)
+}
+}
+
 }

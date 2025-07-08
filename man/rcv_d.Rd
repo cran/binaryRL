@@ -26,72 +26,141 @@ rcv_d(
 )
 }
 \arguments{
-\item{data}{[data.frame] raw data. 
+\item{data}{[data.frame] 
 This data should include the following mandatory columns: 
  \itemize{
-   \item 1. L-BFGS-B (from `stats::optim`);
-   \item 2. Simulated Annealing (`GenSA`);
-   \item 3. Genetic Algorithm (`GA`);
-   \item 4. Differential Evolution (`DEoptim`);
-   \item 5. Particle Swarm Optimization (`pso`);
-   \item 6. Bayesian Optimization (`mlrMBO`);
-   \item 7. Covariance Matrix Adapting Evolutionary Strategy (`cmaes`);
-   \item 8. Nonlinear Optimization (`nloptr`)
+   \item "sub"
+   \item "time_line" (e.g., "Block", "Trial")
+   \item "L_choice"
+   \item "R_choice"
+   \item "L_reward"
+   \item "R_reward"
+   \item "sub_choose"
  }}
 
-\item{id}{[vector] Specifies which subject is being analyzed.
-In recovery analyses, individual subject information is not needed;
-trials from the same experimental procedure can be used across all
-"subjects". Therefore, `id` can be set to `1`. For example, `id = 1`.}
+\item{id}{[vector]
+Specifies which subject's data to use. In parameter and model recovery
+ analyses, the specific subject ID is often irrelevant. Although the
+ experimental trial order might have some randomness for each subject,
+ the sequence of reward feedback is typically pseudo-random.
 
-\item{n_trials}{[integer] number of total trials}
+The default value for this argument is `NULL`. When `id` is `NULL`,
+ the program automatically detects existing subject IDs within the
+ dataset. It then randomly selects one subject as a sample, and the
+ parameter and model recovery procedures are performed based on this
+ selected subject's data.
+ 
+ \code{default: id = NULL}}
 
-\item{simulate_models}{[list] A collection of functions used to 
-generate simulated data.}
+\item{n_trials}{[integer]
+Represents the total number of trials a single subject experienced
+ in the experiment. If this parameter is kept at its default value
+ of `NULL`, the program will automatically detect how many trials
+ a subject experienced from the provided data. This information
+ is primarily used for calculating model fit statistics such as
+ AIC (Akaike Information Criterion) and BIC (Bayesian Information
+ Criterion).
+ 
+ \code{default: n_trials = NULL}}
 
-\item{simulate_lower}{[list] The lower bounds for simulate models}
+\item{simulate_models}{[list] 
+A collection of functions used to generate simulated data.}
 
-\item{simulate_upper}{[list] The upper bounds for simulate models}
+\item{simulate_lower}{[list] 
+The lower bounds for simulate models}
 
-\item{fit_models}{[list] A collection of functions applied to 
-fit models to the data.}
+\item{simulate_upper}{[list] 
+The upper bounds for simulate models}
 
-\item{fit_lower}{[list] The lower bounds for model fit models}
+\item{fit_models}{[list] 
+A collection of functions applied to fit models to the data.}
 
-\item{fit_upper}{[list] The upper bounds for model fit models}
+\item{fit_lower}{[list] 
+The lower bounds for model fit models}
 
-\item{model_names}{[list] the names of fit modals}
+\item{fit_upper}{[list] 
+The upper bounds for model fit models}
 
-\item{funcs}{[vector] A character vector containing the names of all 
-user-defined functions required for the computation.}
+\item{model_names}{[list] 
+The names of fit modals}
 
-\item{initial_params}{[vector] Initial values for the free parameters. 
-These need to be set only when using L-BFGS-B. Other algorithms 
-automatically generate initial values.
-for `L-BFGS-B`, `GenSA`, set `initial = c(0, 0, ...)`}
+\item{funcs}{[character]
+A character vector containing the names of all user-defined functions
+ required for the computation. When parallel computation is enabled
+ (i.e., `nc > 1`), user-defined models and their custom functions might
+ not be automatically accessible within the parallel environment.
 
-\item{initial_size}{[integer] Initial values for the free parameters. 
-These need to be set only when using L-BFGS-B. Other algorithms 
-automatically generate initial values.
-for `Bayesian`, `GA`, set `initial = 50`}
+Therefore, if you have created your own reinforcement learning model
+ that modifies the package's default four default functions 
+ (default functions: 
+    \code{util_func = \link[binaryRL]{func_gamma}}, 
+    \code{rate_func = \link[binaryRL]{func_eta}}, 
+    \code{expl_func = \link[binaryRL]{func_epsilon}}
+    \code{bias_func = \link[binaryRL]{func_pi}}
+    \code{prob_func = \link[binaryRL]{func_tau}}
+ ), 
+ you must explicitly provide the names of your custom functions as a 
+ vector here.}
 
-\item{iteration_s}{[integer] the number of iteration in simulation (simulate)}
+\item{initial_params}{[numeric]
+Initial values for the free parameters that the optimization algorithm will
+ search from. These are primarily relevant when using algorithms that require
+ an explicit starting point, such as \code{L-BFGS-B}. If not specified,
+ the function will automatically generate initial values close to zero.
+ 
+ \code{default: initial_params = NA}.}
 
-\item{iteration_f}{[integer] the number of iteration in algorithm (fit)}
+\item{initial_size}{[integer]
+This parameter corresponds to the \strong{population size} in genetic 
+ algorithms (\code{GA}). It specifies the number of initial candidate
+ solutions that the algorithm starts with for its evolutionary search.
+ This parameter is only required for optimization algorithms that operate on
+ a population, such as `GA` or `DEoptim`. 
+ 
+ \code{default: initial_size = 50}.}
 
-\item{seed}{[integer] random seed. This ensures that the results are 
-reproducible and remain the same each time the function is run. 
-default: `seed = 123`}
+\item{iteration_s}{[integer]
+This parameter determines how many simulated datasets are created for 
+ subsequent model and parameter recovery analyses.}
 
-\item{nc}{[integer] Number of CPU cores to use for parallel computation.}
+\item{iteration_f}{[integer]
+The number of iterations the optimization algorithm will perform
+ when searching for the best-fitting parameters during the fitting
+ phase. A higher number of iterations may increase the likelihood of 
+ finding a global optimum but also increases computation time.}
 
-\item{algorithm}{[character] Choose an algorithm package from
-`L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `PSO`, `Bayesian`, `CMA-ES`.
+\item{seed}{[integer] 
+Random seed. This ensures that the results are 
+ reproducible and remain the same each time the function is run. 
+ 
+ \code{default: seed = 123}}
+
+\item{nc}{[integer]
+Number of cores to use for parallel processing. Since fitting
+optimal parameters for each subject is an independent task,
+parallel computation can significantly speed up the fitting process:
+\itemize{
+  \item \strong{`nc = 1`}: The fitting proceeds sequentially.
+  Parameters for one subject are fitted completely before moving
+  to the next subject.
+  \item \strong{`nc > 1`}: The fitting is performed in parallel
+  across subjects. For example, if `nc = 4`, the algorithm will
+  simultaneously fit data for four subjects. Once these are complete,
+  it will proceed to fit the next batch of subjects (e.g., subjects
+  5-8), and so on, until all subjects are processed.
+}
+
+ \code{default: nc = 1}}
+
+\item{algorithm}{[character] 
+Choose an algorithm package from
+ `L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `PSO`, `Bayesian`, `CMA-ES`.
+ 
 In addition, any algorithm from the `nloptr` package is also
-supported. If your chosen `nloptr` algorithm requires a local search,
-you need to input a character vector. The first element represents
-the algorithm used for global search, and the second element represents
-the algorithm used for local search.}
+ supported. If your chosen `nloptr` algorithm requires a local search,
+ you need to input a character vector. The first element represents
+ the algorithm used for global search, and the second element represents
+ the algorithm used for local search.}
 }
 \value{
 A list where each element is a data.frame. 
@@ -99,11 +168,105 @@ A list where each element is a data.frame.
  data (generated by Model A) with Model B.
 }
 \description{
-This function fits multiple sets of simulated data using a loop.  
- You need to provide a list of simulation functions, fitting functions,  
- and parameter bounds. If you prefer to handle the process manually,  
- you can use the internal functions `simulate_list` and `recovery_data`.
+This function is designed for model and parameter recovery of user-created
+ (black-box) models, provided they conform to the specified interface.
+ (demo:  
+    \code{\link[binaryRL]{TD}}, 
+    \code{\link[binaryRL]{RSTD}}, 
+    \code{\link[binaryRL]{Utility}}
+ ).
+The process involves generating synthetic datasets. First, parameters
+ are randomly sampled within a defined range. These parameters are then
+ used to simulate artificial datasets.
+
+Subsequently, all candidate models are used to fit these simulated
+ datasets. Model recoverability is assessed if a synthetic dataset
+ generated by Model A is consistently best fitted by Model A itself.
+
+Furthermore, the function allows users to evaluate parameter
+ recoverability. If, for instance, a synthetic dataset generated by
+ Model A was based on parameters like 0.3 and 0.7, and Model A then
+ recovers optimal parameters close to 0.3 and 0.7 from this data,
+ it indicates that the parameters of Model A are recoverable.
  
- For more information, please refer to the GitHub repository:
- https://github.com/yuki-961004/binaryRL
+ The function provides several optimization algorithms:
+  \itemize{
+    \item 1. L-BFGS-B (from \code{stats::optim})
+    \item 2. Simulated Annealing (\code{GenSA::GenSA})
+    \item 3. Genetic Algorithm (\code{GA::ga})
+    \item 4. Differential Evolution (\code{DEoptim::DEoptim})
+    \item 5. Particle Swarm Optimization (\code{pso::psoptim})
+    \item 6. Bayesian Optimization (\code{mlrMBO::mbo})
+    \item 7. Covariance Matrix Adapting Evolutionary Strategy (\code{cmaes::cma_es})
+    \item 8. Nonlinear Optimization (\code{nloptr::nloptr})
+  }
+
+ For more information, please refer to the homepage of this package:
+ \url{https://yuki-961004.github.io/binaryRL/}
+}
+\note{
+During the parameter fitting process, some algorithms might get stuck
+ in local optima. Alternatively, even a global optimum found could be
+ a "beautiful error." This occurs because black-box functions are often
+ non-differentiable. A very low loss function value at a specific point
+ might result from overfitting noise in trials, with surrounding points
+ having relatively high loss values.
+
+A classic approach to mitigate this is Hierarchical Bayesian modeling,
+ which constrains individual parameters at the group level. Currently,
+ this package does not offer such a solution.
+
+However, we highly recommend using evolutionary algorithms like 
+ \code{DEoptim} or \code{GA} for optimization. These algorithms continue to 
+ explore and weigh options even after finding an apparent optimum. If the 
+ offspring of this optimum still yield superior solutions, it suggests that 
+ these parameters are not extreme values obtained from overfitting noise.
+}
+\examples{
+\dontrun{
+recovery <- binaryRL::rcv_d(
+  data = binaryRL::Mason_2024_Exp2,
+##-----------------------------------------------------------------------------##
+##----------------------------- black-box function ----------------------------##
+  #funcs = c("your_funcs"),
+  model_names = c("TD", "RSTD", "Utility"),
+  simulate_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
+  simulate_lower = list(c(0, 1), c(0, 0, 1), c(0, 0, 1)),
+  simulate_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1)),
+  fit_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
+  fit_lower = list(c(0, 1), c(0, 0, 1), c(0, 0, 1)),
+  fit_upper = list(c(1, 5), c(1, 1, 5), c(1, 1, 5)),
+##----------------------------- interation number -----------------------------##
+  iteration_s = 100,
+  iteration_f = 100,
+##-------------------------------- algorithms ---------------------------------##
+  nc = 1,                 # <nc > 1>: parallel computation across subjects
+  # Base R Optimization
+  algorithm = "L-BFGS-B"  # Gradient-Based (stats)
+##-----------------------------------------------------------------------------##
+  # Specialized External Optimization
+  #algorithm = "GenSA"    # Simulated Annealing (GenSA)
+  #algorithm = "GA"       # Genetic Algorithm (GA)
+  #algorithm = "DEoptim"  # Differential Evolution (DEoptim)
+  #algorithm = "PSO"      # Particle Swarm Optimization (pso)
+  #algorithm = "Bayesian" # Bayesian Optimization (mlrMBO)
+  #algorithm = "CMA-ES"   # Covariance Matrix Adapting (cmaes)
+##-----------------------------------------------------------------------------##
+  # Optimization Library (nloptr)
+  #algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")
+##-------------------------------- algorithms ---------------------------------##
+#################################################################################
+)
+
+result <- dplyr::bind_rows(recovery) \%>\%
+  dplyr::select(simulate_model, fit_model, iteration, everything())
+
+# Ensure the output directory exists
+if (!dir.exists("../OUTPUT")) {
+  dir.create("../OUTPUT", recursive = TRUE)
+}
+
+write.csv(result, file = "../OUTPUT/result_recovery.csv", row.names = FALSE)
+}
+
 }
