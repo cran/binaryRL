@@ -16,8 +16,8 @@
 #' 
 #' @note 
 #' When customizing these functions, please ensure that you do not modify 
-#'  the arguments. Instead, only modify the `if-else` statements or the internal 
-#'  logic to adapt the function to your needs.
+#'  the arguments. Instead, only modify the \code{if-else} statements or 
+#'  the internal logic to adapt the function to your needs.
 #' 
 #' @param i 
 #' The current row number.
@@ -67,10 +67,12 @@
 #' @param occurrence 
 #' The number of times the same stimulus has been chosen.
 #' 
-#' @param eta [numeric]
-#' Parameters used in the Learning Rate Function, \code{rate_func}, representing
-#'  the rate at which the subject updates the difference (prediction error)
-#'  between the reward and the expected value in the subject's mind.
+#' @param eta [vector]
+#' Parameters used in the Learning Rate Function, 
+#' \code{rate_func} representing the rate at which the subject 
+#'  updates the difference 
+#'  (prediction error) between the reward and the expected value in the 
+#'  subject's mind.
 #'
 #'  The structure of \code{eta} depends on the model type:
 #'  \itemize{
@@ -134,10 +136,10 @@
 #'     eta <- as.numeric(eta)
 #'   }
 #' ################################ [ RSTD ] ###################################
-#'   else if (length(eta) > 1 & utility < value) {
+#'   else if (length(eta) == 2 & utility < value) {
 #'     eta <- eta[1]
 #'   }
-#'   else if (length(eta) > 1 & utility >= value) {
+#'   else if (length(eta) == 2 & utility >= value) {
 #'     eta <- eta[2]
 #'   }
 #' ################################ [ ERROR ] ##################################
@@ -185,10 +187,10 @@ func_eta <- function(
     eta <- as.numeric(eta)
   }
 ################################### [ RSTD ] ###################################
-  else if (length(eta) > 1 & utility < value) {
+  else if (length(eta) == 2 & utility < value) {
     eta <- eta[1]
   } 
-  else if (length(eta) > 1 & utility >= value) {
+  else if (length(eta) == 2 & utility >= value) {
     eta <- eta[2]
   }
 ################################## [ ERROR ] ###################################

@@ -5,126 +5,294 @@
 \title{Step 3: Optimizing parameters to fit real data}
 \usage{
 fit_p(
+  policy = "off",
+  estimate = "MLE",
   data,
   id = NULL,
   n_trials = NULL,
-  fit_model = list(TD, RSTD, Utility),
   funcs = NULL,
   model_name = c("TD", "RSTD", "Utility"),
+  fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
   lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
   upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1)),
+  priors = NULL,
+  tolerance = 0.001,
+  iteration_i = 10,
+  iteration_g = 0,
   initial_params = NA,
   initial_size = 50,
-  iteration = 10,
   seed = 123,
   nc = 1,
   algorithm
 )
 }
 \arguments{
+\item{policy}{[string]
+
+Specifies the learning policy to be used.
+This determines how the model updates action values based on observed or
+  simulated choices. It can be either \code{"off"} or \code{"on"}.
+  
+ \itemize{
+  \item {
+   \strong{Off-Policy (Q-learning): }
+   This is the most common approach for modeling
+    reinforcement learning in Two-Alternative Forced Choice (TAFC) tasks.
+    In this mode, the model's goal is to learn the underlying value of
+    each option by observing the human participant's behavior. It achieves
+    this by consistently updating the value of the option that the
+    human actually chose. The focus is on understanding the value 
+    representation that likely drove the participant's decisions.
+  }
+  \item {
+   \strong{Off-Policy (SARSA): }
+   In this mode, the target policy and the behavior policy are identical. 
+    The model first computes the selection probability for each option based 
+    on their current values. Critically, it then uses these probabilities to 
+    sample its own action. The value update is then performed on the action 
+    that the model itself selected. This approach focuses more on directly 
+    mimicking the stochastic choice patterns of the agent, rather than just 
+    learning the underlying values from a fixed sequence of actions.
+  }
+ }
+ 
+default: \code{policy = "off"}}
+
+\item{estimate}{[string] 
+
+  Estimation method. Can be either \code{"MLE"} or \code{"MAP"}.
+  \itemize{
+    \item{\code{"MLE"}: (Default) Maximum Likelihood Estimation. This
+      method finds the parameter values that maximize the log-likelihood
+      of the data. A higher log-likelihood indicates that the parameters
+      provide a better explanation for the observed human behavior. In
+      other words, data simulated using these parameters would most
+      closely resemble the actual human data. This method does not
+      consider any prior information about the parameters.}
+      
+    \item{\code{"MAP"}: Maximum A Posteriori Estimation. This method
+      finds the parameter values that maximize the posterior probability.
+      It is an iterative process based on the Expectation-Maximization
+      (EM) framework.
+      
+      \itemize{
+        \item{\strong{Initialization}: The process begins by assuming a
+          uniform distribution as the prior for each parameter, making the
+          initial log-prior zero. The first optimization is thus
+          equivalent to MLE.}
+        \item{\strong{Iteration}: After finding the best parameters for
+          all subjects, the algorithm assesses the actual distribution of
+          each parameter and fits a normal distribution to it. This
+          fitted distribution becomes the new empirical prior.}
+        \item{\strong{Re-estimation}: The parameters are then re-optimized
+          to maximize the updated posterior probability.}
+        \item{\strong{Convergence}: This cycle repeats until the posterior
+          probability converges or the maximum number of iterations
+          (specified by \code{iteration_g}) is reached.}
+      }
+      Using this method requires that the \code{priors} argument
+      be specified to define the initial prior distributions.
+    }
+   }
+
+default: \code{estimate = "MLE"}}
+
 \item{data}{[data.frame] 
+
 This data should include the following mandatory columns: 
  \itemize{
-   \item "sub"
-   \item "time_line" (e.g., "Block", "Trial")
-   \item "L_choice"
-   \item "R_choice"
-   \item "L_reward"
-   \item "R_reward"
-   \item "sub_choose"
+   \item \code{sub} "Subject"
+   \item \code{time_line} "Block" "Trial"
+   \item \code{L_choice} "L_choice"
+   \item \code{R_choice} "R_choice"
+   \item \code{L_reward} "L_reward"
+   \item \code{R_reward} "R_reward"
+   \item \code{sub_choose} "Sub_Choose"
  }}
 
-\item{id}{[vector]
-Specifies the subject ID(s) for whom optimal parameters are to be fitted.
- If you intend to fit all subjects within your dataset, it is strongly
- recommended to use \code{id = unique(data$Subject)}. This approach accounts
- for cases where subject IDs in the dataset may not be simple numeric
- sequences (e.g., "1", "2", "3", "4") or may contain string
- entries (e.g., "1", "2", "3", "004"). Using \code{id = 1:4} could lead to 
- errors if IDs are not sequentially numbered integers.
+\item{id}{[CharacterVector]
+
+ A vector specifying the subject ID(s) for which parameters should be
+  fitted. The function will process only the subjects provided in this
+  vector.
+
+ To fit all subjects, you can either explicitly set the argument as
+  \code{id = unique(data$Subject)} or leave it as the default
+  (\code{id = NULL}). Both approaches will direct the function to fit
+  parameters for every unique subject in the dataset.
+
+ It is strongly recommended to avoid using simple numeric sequences like
+  \code{id = 1:4}. This practice can lead to errors if subject IDs are
+  stored as strings (e.g., subject four is stored as "004") or are not
+  sequentially numbered.
  
- \code{default: id = NULL}}
+ default: \code{id = NULL}}
 
 \item{n_trials}{[integer]
+
 Represents the total number of trials a single subject experienced
  in the experiment. If this parameter is kept at its default value
- of `NULL`, the program will automatically detect how many trials
+ of \code{NULL}, the program will automatically detect how many trials
  a subject experienced from the provided data. This information
  is primarily used for calculating model fit statistics such as
  AIC (Akaike Information Criterion) and BIC (Bayesian Information
  Criterion).
  
- \code{default: n_trials = NULL}}
+ default: \code{n_trials = NULL}}
 
-\item{fit_model}{[list] 
-A collection of functions applied to fit models to the data.}
+\item{funcs}{[CharacterVector]
 
-\item{funcs}{[character]
 A character vector containing the names of all user-defined functions
  required for the computation. When parallel computation is enabled
- (i.e., `nc > 1`), user-defined models and their custom functions might
- not be automatically accessible within the parallel environment.
+ (i.e., \code{nc > 1}), user-defined models and their custom functions 
+ might not be automatically accessible within the parallel environment.
 
 Therefore, if you have created your own reinforcement learning model
- that modifies the package's default four default functions 
+ that modifies the package's default six default functions 
  (default functions: 
     \code{util_func = \link[binaryRL]{func_gamma}}, 
     \code{rate_func = \link[binaryRL]{func_eta}}, 
-    \code{expl_func = \link[binaryRL]{func_epsilon}}
-    \code{bias_func = \link[binaryRL]{func_pi}}
-    \code{prob_func = \link[binaryRL]{func_tau}}
+    \code{expl_func = \link[binaryRL]{func_epsilon}},
+    \code{bias_func = \link[binaryRL]{func_pi}},
+    \code{prob_func = \link[binaryRL]{func_tau}},
+    \code{loss_func = \link[binaryRL]{func_logl}}
  ), 
  you must explicitly provide the names of your custom functions as a 
  vector here.}
 
-\item{model_name}{[list] 
-The name of fit modals}
+\item{model_name}{[List] 
 
-\item{lower}{[list] 
-The lower bounds for model fit models}
+The name of fit modals
 
-\item{upper}{[list] 
-The upper bounds for model fit models}
+e.g. \code{model_name = c("TD", "RSTD", "Utility")}}
 
-\item{initial_params}{[vector]
+\item{fit_model}{[List] 
+
+A collection of functions applied to fit models to the data.
+
+e.g. \code{fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility)}}
+
+\item{lower}{[List] 
+
+The lower bounds for model fit models
+
+e.g. \code{lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0))}}
+
+\item{upper}{[List] 
+
+The upper bounds for model fit models
+
+e.g. \code{upper = list(c(1, 10), c(1, 1, 10), c(1, 1, 10))}}
+
+\item{priors}{[List]
+
+ A list specifying the prior distributions for the model parameters.
+  This argument is mandatory when using \code{estimate = "MAP"}.
+  There are two primary scenarios for its use:
+
+  \strong{1. Static MAP Estimation (Non-Hierarchical)}
+  This approach is used when you have a strong, pre-defined belief about
+  the parameter priors and do not want the model to update them iteratively.
+  \describe{
+    \item{Configuration:}{
+      \itemize{
+        \item{Set \code{estimate = "MAP"}.}
+        \item{Provide a \code{list} defining your confident prior
+          distributions.}
+        \item{Keep \code{iteration_g = 0} (the default).}
+      }
+    }
+    \item{Behavior:}{ The algorithm maximizes the posterior
+      probability based solely on your specified priors. It will not
+      use the EM (Expectation-Maximization) framework to learn new
+      priors from the data.}
+  }
+
+  \strong{2. Hierarchical Bayesian Estimation via EM}
+  This approach is used to let the model learn the group-level (hierarchical)
+  prior distributions directly from the data.
+  \describe{
+    \item{Configuration:}{
+      \itemize{
+        \item{Set \code{estimate = "MAP"}.}
+        \item{Specify a weak or non-informative initial prior, such as a
+          uniform distribution for all parameters.}
+        \item{Set \code{iteration_g} to a value greater than 0.}
+      }
+    }
+    \item{Behavior:}{ With a uniform prior, the initial
+      log-posterior equals the log-likelihood, making the first estimation
+      step equivalent to MLE. The algorithm then initiates the EM procedure:
+      it iteratively assesses the actual parameter distribution across all
+      subjects and updates the group-level priors. This cycle continues
+      until the posterior converges or \code{iteration_g} is reached.}
+  }
+
+ default: \code{priors = NULL}}
+
+\item{tolerance}{[double] 
+
+Convergence threshold for MAP estimation. If the change in
+ log posterior probability between iterations is smaller than this value, the
+ algorithm is considered to have converged and the program will stop.
+
+default: \code{tolerance = 0.001}}
+
+\item{iteration_i}{[integer] 
+
+The number of iterations the optimization algorithm will perform
+ when searching for the best-fitting parameters during the fitting
+ phase. A higher number of iterations may increase the likelihood of 
+ finding a global optimum but also increases computation time.
+ 
+ default: \code{iteration_i = 10}.}
+
+\item{iteration_g}{[integer]
+
+The maximum number of iterations for the Expectation-Maximization (EM)
+ based MAP estimation. The algorithm will stop once this iteration
+ count is reached, even if the change in the log-posterior value has
+ not yet fallen below the \code{tolerance} threshold.
+
+ default: \code{iteration_g = 0}.}
+
+\item{initial_params}{[NumericVector]
+
 Initial values for the free parameters that the optimization algorithm will
  search from. These are primarily relevant when using algorithms that require
  an explicit starting point, such as \code{L-BFGS-B}. If not specified,
  the function will automatically generate initial values close to zero.
  
- \code{default: initial_params = NA}.}
+ default: \code{initial_params = NA}.}
 
 \item{initial_size}{[integer]
-This parameter corresponds to the \strong{population size} in genetic 
+
+This parameter corresponds to the population size in genetic 
  algorithms (\code{GA}). It specifies the number of initial candidate
  solutions that the algorithm starts with for its evolutionary search.
  This parameter is only required for optimization algorithms that operate on
- a population, such as `GA` or `DEoptim`. 
+ a population, such as \code{GA} or \code{DEoptim}. 
  
- \code{default: initial_size = 50}.}
-
-\item{iteration}{[integer] 
-The number of iterations the optimization algorithm will perform
- when searching for the best-fitting parameters during the fitting
- phase. A higher number of iterations may increase the likelihood of 
- finding a global optimum but also increases computation time.}
+ default: \code{initial_size = 50}.}
 
 \item{seed}{[integer] 
+
 Random seed. This ensures that the results are 
  reproducible and remain the same each time the function is run. 
  
- \code{default: seed = 123}}
+default: \code{seed = 123}}
 
 \item{nc}{[integer]
+
 Number of cores to use for parallel processing. Since fitting
 optimal parameters for each subject is an independent task,
 parallel computation can significantly speed up the fitting process:
 \itemize{
-  \item \strong{`nc = 1`}: The fitting proceeds sequentially.
+  \item \strong{nc = 1}: The fitting proceeds sequentially.
   Parameters for one subject are fitted completely before moving
   to the next subject.
-  \item \strong{`nc > 1`}: The fitting is performed in parallel
-  across subjects. For example, if `nc = 4`, the algorithm will
+  \item \strong{nc > 1}: The fitting is performed in parallel
+  across subjects. For example, if \code{nc = 4}, the algorithm will
   simultaneously fit data for four subjects. Once these are complete,
   it will proceed to fit the next batch of subjects (e.g., subjects
   5-8), and so on, until all subjects are processed.
@@ -132,12 +300,14 @@ parallel computation can significantly speed up the fitting process:
 
  \code{default: nc = 1}}
 
-\item{algorithm}{[character] 
+\item{algorithm}{[string] 
+
 Choose an algorithm package from
- `L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `PSO`, `Bayesian`, `CMA-ES`.
+ \code{L-BFGS-B}, \code{GenSA},\code{GA},\code{DEoptim},\code{PSO},
+ \code{Bayesian}, \code{CMA-ES}.
  
-In addition, any algorithm from the `nloptr` package is also
- supported. If your chosen `nloptr` algorithm requires a local search,
+In addition, any algorithm from the \code{nloptr} package is also
+ supported. If your chosen \code{nloptr} algorithm requires a local search,
  you need to input a character vector. The first element represents
  the algorithm used for global search, and the second element represents
  the algorithm used for local search.}
@@ -176,37 +346,80 @@ This function is designed to fit the optimal parameters of black-box
  \url{https://yuki-961004.github.io/binaryRL/}
 }
 \note{
-The primary difference between `fit_p` and `rcv_d` lies in their data
- source: `fit_p` fits parameters to real data, while `rcv_d` fits
- parameters to synthetic data generated by models. Many studies
- inappropriately skip the `rcv_d` step.
+While both \code{fit_p} and \code{rcv_d} utilize the same underlying
+\code{optimize_para} function to find optimal parameters, they play
+distinct and sequential roles in the modeling pipeline.
 
-Imagine `fit_p` as the actual boxing match, and `rcv_d` as the weigh-in.
- Boxers of different weight classes shouldn't compete directly.
- 
-Similarly, if a competing model lacks the ability of parameter or model
- recovering, even if your proposed model outperforms it in `fit_p`,
- it doesn't necessarily make your proposed model a good one.
+The key differences are as follows:
+\enumerate{
+  \item{\strong{Purpose and Data Source}: \code{rcv_d} should always be
+    performed before \code{fit_p}. Its primary role is to validate a
+    model's stability by fitting it to synthetic data generated by the
+    model itself. This process, known as parameter recovery, ensures the
+    model is well-behaved. In contrast, \code{fit_p} is used in the
+    subsequent stage to fit the validated model to real experimental
+    data.}
+
+  \item{\strong{Estimation Method}: \code{rcv_d} does not include an
+    \code{estimate} argument. This is because the synthetic data is
+    generated from known "true" parameters, which are drawn from
+    pre-defined distributions (typically uniform for most parameters and
+    exponential for the inverse temperature). Since the ground truth is
+    known, a hierarchical estimation (MAP) is not applicable. The
+    \code{fit_p} function, however, requires this argument to handle
+    real data where the true parameters are unknown.}
+
+  \item{\strong{Policy Setting}: In \code{fit_p}, the \code{policy}
+    setting has different effects: "on-policy" is better for learning
+    choice patterns, while "off-policy" yields more accurate parameter
+    estimates. For \code{rcv_d}, the process defaults to an "off-policy"
+    approach because its main objectives are to verify if the true
+    parameters can be accurately recovered and to assess whether competing
+    models are distinguishable, tasks for which off-policy estimation is
+    more suitable.}
+}
 }
 \examples{
 \dontrun{
 comparison <- binaryRL::fit_p(
-  data = binaryRL::Mason_2024_Exp2,
-  id = unique(binaryRL::Mason_2024_Exp2$Subject),
-##-----------------------------------------------------------------------------##
-##----------------------------- black-box function ----------------------------##
+  data = binaryRL::Mason_2024_G2,
+  id = unique(binaryRL::Mason_2024_G2$Subject),
+#+-----------------------------------------------------------------------------+#
+#|----------------------------- black-box function ----------------------------|#
   #funcs = c("your_funcs"),
+  policy = c("off", "on"),
   fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
   model_name = c("TD", "RSTD", "Utility"),
+#|--------------------------------- estimate ----------------------------------|#
+  estimate = c("MLE", "MAP"),
+#|------------------------------------ MLE ------------------------------------|#
   lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
   upper = list(c(1, 10), c(1, 1, 10), c(1, 1, 10)),
-##----------------------------- interation number -----------------------------##
-  iteration = 10,
-##-------------------------------- algorithms ---------------------------------##
+#|------------------------------------ MAP ------------------------------------|#
+  priors = list(
+    list(
+      eta = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
+      tau = function(x) {stats::dexp(x, rate = 1, log = TRUE)}
+    ), 
+    list(
+      eta = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
+      eta = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
+      tau = function(x) {stats::dexp(x, rate = 1, log = TRUE)}
+    ), 
+    list(
+      eta = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
+      gamma = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
+      tau = function(x) {stats::dexp(x, rate = 1, log = TRUE)}
+    )
+  ),
+#|----------------------------- iteration number ------------------------------|#
+  iteration_i = 10,
+  iteration_g = 10,
+#|-------------------------------- algorithms ---------------------------------|#
   nc = 1,                 # <nc > 1>: parallel computation across subjects
   # Base R Optimization
   algorithm = "L-BFGS-B"  # Gradient-Based (stats)
-##-----------------------------------------------------------------------------##
+#|-----------------------------------------------------------------------------|#
   # Specialized External Optimization
   #algorithm = "GenSA"    # Simulated Annealing (GenSA)
   #algorithm = "GA"       # Genetic Algorithm (GA)
@@ -214,10 +427,10 @@ comparison <- binaryRL::fit_p(
   #algorithm = "PSO"      # Particle Swarm Optimization (pso)
   #algorithm = "Bayesian" # Bayesian Optimization (mlrMBO)
   #algorithm = "CMA-ES"   # Covariance Matrix Adapting (cmaes)
-##-----------------------------------------------------------------------------##
+#|-----------------------------------------------------------------------------|#
   # Optimization Library (nloptr)
   #algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")
-##-------------------------------- algorithms ---------------------------------##
+#|-------------------------------- algorithms ---------------------------------|#
 #################################################################################
 )
 

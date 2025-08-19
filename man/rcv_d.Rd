@@ -5,146 +5,211 @@
 \title{Step 2: Generating fake data for parameter and model recovery}
 \usage{
 rcv_d(
+  policy = "off",
   data,
   id = NULL,
   n_trials = NULL,
-  simulate_models = list(TD, RSTD, Utility),
+  funcs = NULL,
+  model_names = c("TD", "RSTD", "Utility"),
+  simulate_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
   simulate_lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
   simulate_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1)),
-  fit_models = list(TD, RSTD, Utility),
+  fit_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
   fit_lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
-  fit_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1)),
-  model_names = c("TD", "RSTD", "Utility"),
-  funcs = NULL,
-  initial_params = NA,
-  initial_size = 50,
+  fit_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 10)),
   iteration_s = 10,
   iteration_f = 10,
+  initial_params = NA,
+  initial_size = 50,
   seed = 1,
   nc = 1,
   algorithm
 )
 }
 \arguments{
+\item{policy}{[string]
+
+Specifies the learning policy to be used.
+This determines how the model updates action values based on observed or
+  simulated choices. It can be either \code{"off"} or \code{"on"}.
+  
+ \itemize{
+  \item {
+   \strong{Off-Policy (Q-learning): }
+   This is the most common approach for modeling
+    reinforcement learning in Two-Alternative Forced Choice (TAFC) tasks.
+    In this mode, the model's goal is to learn the underlying value of
+    each option by observing the human participant's behavior. It achieves
+    this by consistently updating the value of the option that the
+    human actually chose. The focus is on understanding the value 
+    representation that likely drove the participant's decisions.
+  }
+  \item {
+   \strong{Off-Policy (SARSA): }
+   In this mode, the target policy and the behavior policy are identical. 
+    The model first computes the selection probability for each option based 
+    on their current values. Critically, it then uses these probabilities to 
+    sample its own action. The value update is then performed on the action 
+    that the model itself selected. This approach focuses more on directly 
+    mimicking the stochastic choice patterns of the agent, rather than just 
+    learning the underlying values from a fixed sequence of actions.
+  }
+ }
+ 
+default: \code{policy = "off"}}
+
 \item{data}{[data.frame] 
+
 This data should include the following mandatory columns: 
  \itemize{
-   \item "sub"
-   \item "time_line" (e.g., "Block", "Trial")
-   \item "L_choice"
-   \item "R_choice"
-   \item "L_reward"
-   \item "R_reward"
-   \item "sub_choose"
+   \item \code{sub} "Subject"
+   \item \code{time_line} "Block" "Trial"
+   \item \code{L_choice} "L_choice"
+   \item \code{R_choice} "R_choice"
+   \item \code{L_reward} "L_reward"
+   \item \code{R_reward} "R_reward"
+   \item \code{sub_choose} "Sub_Choose"
  }}
 
-\item{id}{[vector]
+\item{id}{[CharacterVector]
+
 Specifies which subject's data to use. In parameter and model recovery
  analyses, the specific subject ID is often irrelevant. Although the
  experimental trial order might have some randomness for each subject,
  the sequence of reward feedback is typically pseudo-random.
 
-The default value for this argument is `NULL`. When `id` is `NULL`,
+The default value for this argument is \code{NULL}. When \code{id = NULL},
  the program automatically detects existing subject IDs within the
  dataset. It then randomly selects one subject as a sample, and the
  parameter and model recovery procedures are performed based on this
  selected subject's data.
  
- \code{default: id = NULL}}
+default: \code{id = NULL}}
 
 \item{n_trials}{[integer]
+
 Represents the total number of trials a single subject experienced
  in the experiment. If this parameter is kept at its default value
- of `NULL`, the program will automatically detect how many trials
+ of \code{NULL}, the program will automatically detect how many trials
  a subject experienced from the provided data. This information
  is primarily used for calculating model fit statistics such as
  AIC (Akaike Information Criterion) and BIC (Bayesian Information
  Criterion).
  
- \code{default: n_trials = NULL}}
+ default: \code{n_trials = NULL}}
 
-\item{simulate_models}{[list] 
-A collection of functions used to generate simulated data.}
+\item{funcs}{[CharacterVector]
 
-\item{simulate_lower}{[list] 
-The lower bounds for simulate models}
-
-\item{simulate_upper}{[list] 
-The upper bounds for simulate models}
-
-\item{fit_models}{[list] 
-A collection of functions applied to fit models to the data.}
-
-\item{fit_lower}{[list] 
-The lower bounds for model fit models}
-
-\item{fit_upper}{[list] 
-The upper bounds for model fit models}
-
-\item{model_names}{[list] 
-The names of fit modals}
-
-\item{funcs}{[character]
 A character vector containing the names of all user-defined functions
  required for the computation. When parallel computation is enabled
- (i.e., `nc > 1`), user-defined models and their custom functions might
- not be automatically accessible within the parallel environment.
+ (i.e., \code{nc > 1}), user-defined models and their custom functions 
+ might not be automatically accessible within the parallel environment.
 
 Therefore, if you have created your own reinforcement learning model
- that modifies the package's default four default functions 
+ that modifies the package's default six default functions 
  (default functions: 
     \code{util_func = \link[binaryRL]{func_gamma}}, 
     \code{rate_func = \link[binaryRL]{func_eta}}, 
-    \code{expl_func = \link[binaryRL]{func_epsilon}}
-    \code{bias_func = \link[binaryRL]{func_pi}}
-    \code{prob_func = \link[binaryRL]{func_tau}}
+    \code{expl_func = \link[binaryRL]{func_epsilon}},
+    \code{bias_func = \link[binaryRL]{func_pi}},
+    \code{prob_func = \link[binaryRL]{func_tau}},
+    \code{loss_func = \link[binaryRL]{func_logl}}
  ), 
  you must explicitly provide the names of your custom functions as a 
  vector here.}
 
-\item{initial_params}{[numeric]
+\item{model_names}{[List] 
+
+The names of fit modals
+
+e.g. \code{model_names = c("TD", "RSTD", "Utility")}}
+
+\item{simulate_models}{[List] 
+
+A collection of functions used to generate simulated data.}
+
+\item{simulate_lower}{[List] 
+
+The lower bounds for simulate models
+
+e.g. \code{simulate_lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0))}}
+
+\item{simulate_upper}{[List] 
+The upper bounds for simulate models
+
+e.g. \code{simulate_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1))}}
+
+\item{fit_models}{[List] 
+
+A collection of functions applied to fit models to the data.
+
+e.g. \code{fit_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility)}}
+
+\item{fit_lower}{[List] 
+
+The lower bounds for model fit models
+
+e.g. \code{fit_lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0))}}
+
+\item{fit_upper}{[List] 
+
+The upper bounds for model fit models
+
+e.g. \code{fit_upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 10))}}
+
+\item{iteration_s}{[integer]
+
+This parameter determines how many simulated datasets are created for 
+ subsequent model and parameter recovery analyses.
+ 
+default: \code{iteration_s = 10}}
+
+\item{iteration_f}{[integer]
+
+The number of iterations the optimization algorithm will perform
+ when searching for the best-fitting parameters during the fitting
+ phase. A higher number of iterations may increase the likelihood of 
+ finding a global optimum but also increases computation time.
+ 
+default: \code{iteration_f = 10}}
+
+\item{initial_params}{[NumericVector]
+
 Initial values for the free parameters that the optimization algorithm will
  search from. These are primarily relevant when using algorithms that require
  an explicit starting point, such as \code{L-BFGS-B}. If not specified,
  the function will automatically generate initial values close to zero.
  
- \code{default: initial_params = NA}.}
+ default: \code{initial_params = NA}.}
 
 \item{initial_size}{[integer]
-This parameter corresponds to the \strong{population size} in genetic 
+
+This parameter corresponds to the population size in genetic 
  algorithms (\code{GA}). It specifies the number of initial candidate
  solutions that the algorithm starts with for its evolutionary search.
  This parameter is only required for optimization algorithms that operate on
- a population, such as `GA` or `DEoptim`. 
+ a population, such as \code{GA} or \code{DEoptim}. 
  
- \code{default: initial_size = 50}.}
-
-\item{iteration_s}{[integer]
-This parameter determines how many simulated datasets are created for 
- subsequent model and parameter recovery analyses.}
-
-\item{iteration_f}{[integer]
-The number of iterations the optimization algorithm will perform
- when searching for the best-fitting parameters during the fitting
- phase. A higher number of iterations may increase the likelihood of 
- finding a global optimum but also increases computation time.}
+ default: \code{initial_size = 50}.}
 
 \item{seed}{[integer] 
+
 Random seed. This ensures that the results are 
  reproducible and remain the same each time the function is run. 
  
- \code{default: seed = 123}}
+ default: \code{seed = 123}}
 
 \item{nc}{[integer]
+
 Number of cores to use for parallel processing. Since fitting
 optimal parameters for each subject is an independent task,
 parallel computation can significantly speed up the fitting process:
 \itemize{
-  \item \strong{`nc = 1`}: The fitting proceeds sequentially.
+  \item \strong{nc = 1}: The fitting proceeds sequentially.
   Parameters for one subject are fitted completely before moving
   to the next subject.
-  \item \strong{`nc > 1`}: The fitting is performed in parallel
-  across subjects. For example, if `nc = 4`, the algorithm will
+  \item \strong{nc > 1}: The fitting is performed in parallel
+  across subjects. For example, if \code{nc = 4}, the algorithm will
   simultaneously fit data for four subjects. Once these are complete,
   it will proceed to fit the next batch of subjects (e.g., subjects
   5-8), and so on, until all subjects are processed.
@@ -152,12 +217,14 @@ parallel computation can significantly speed up the fitting process:
 
  \code{default: nc = 1}}
 
-\item{algorithm}{[character] 
+\item{algorithm}{[string] 
+
 Choose an algorithm package from
- `L-BFGS-B`, `GenSA`, `GA`, `DEoptim`, `PSO`, `Bayesian`, `CMA-ES`.
+ \code{L-BFGS-B}, \code{GenSA},\code{GA},\code{DEoptim},\code{PSO},
+ \code{Bayesian}, \code{CMA-ES}.
  
-In addition, any algorithm from the `nloptr` package is also
- supported. If your chosen `nloptr` algorithm requires a local search,
+In addition, any algorithm from the \code{nloptr} package is also
+ supported. If your chosen \code{nloptr} algorithm requires a local search,
  you need to input a character vector. The first element represents
  the algorithm used for global search, and the second element represents
  the algorithm used for local search.}
@@ -205,29 +272,45 @@ Furthermore, the function allows users to evaluate parameter
  \url{https://yuki-961004.github.io/binaryRL/}
 }
 \note{
-During the parameter fitting process, some algorithms might get stuck
- in local optima. Alternatively, even a global optimum found could be
- a "beautiful error." This occurs because black-box functions are often
- non-differentiable. A very low loss function value at a specific point
- might result from overfitting noise in trials, with surrounding points
- having relatively high loss values.
+While both \code{fit_p} and \code{rcv_d} utilize the same underlying
+\code{optimize_para} function to find optimal parameters, they play
+distinct and sequential roles in the modeling pipeline.
 
-A classic approach to mitigate this is Hierarchical Bayesian modeling,
- which constrains individual parameters at the group level. Currently,
- this package does not offer such a solution.
+The key differences are as follows:
+\enumerate{
+  \item{\strong{Purpose and Data Source}: \code{rcv_d} should always be
+    performed before \code{fit_p}. Its primary role is to validate a
+    model's stability by fitting it to synthetic data generated by the
+    model itself. This process, known as parameter recovery, ensures the
+    model is well-behaved. In contrast, \code{fit_p} is used in the
+    subsequent stage to fit the validated model to real experimental
+    data.}
 
-However, we highly recommend using evolutionary algorithms like 
- \code{DEoptim} or \code{GA} for optimization. These algorithms continue to 
- explore and weigh options even after finding an apparent optimum. If the 
- offspring of this optimum still yield superior solutions, it suggests that 
- these parameters are not extreme values obtained from overfitting noise.
+  \item{\strong{Estimation Method}: \code{rcv_d} does not include an
+    \code{estimate} argument. This is because the synthetic data is
+    generated from known "true" parameters, which are drawn from
+    pre-defined distributions (typically uniform for most parameters and
+    exponential for the inverse temperature). Since the ground truth is
+    known, a hierarchical estimation (MAP) is not applicable. The
+    \code{fit_p} function, however, requires this argument to handle
+    real data where the true parameters are unknown.}
+
+  \item{\strong{Policy Setting}: In \code{fit_p}, the \code{policy}
+    setting has different effects: "on-policy" is better for learning
+    choice patterns, while "off-policy" yields more accurate parameter
+    estimates. For \code{rcv_d}, the process defaults to an "off-policy"
+    approach because its main objectives are to verify if the true
+    parameters can be accurately recovered and to assess whether competing
+    models are distinguishable, tasks for which off-policy estimation is
+    more suitable.}
+}
 }
 \examples{
 \dontrun{
 recovery <- binaryRL::rcv_d(
-  data = binaryRL::Mason_2024_Exp2,
-##-----------------------------------------------------------------------------##
-##----------------------------- black-box function ----------------------------##
+  data = binaryRL::Mason_2024_G2,
+#+-----------------------------------------------------------------------------+#
+#|----------------------------- black-box function ----------------------------|#
   #funcs = c("your_funcs"),
   model_names = c("TD", "RSTD", "Utility"),
   simulate_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
@@ -236,14 +319,14 @@ recovery <- binaryRL::rcv_d(
   fit_models = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
   fit_lower = list(c(0, 1), c(0, 0, 1), c(0, 0, 1)),
   fit_upper = list(c(1, 5), c(1, 1, 5), c(1, 1, 5)),
-##----------------------------- interation number -----------------------------##
+#|----------------------------- interation number -----------------------------|#
   iteration_s = 100,
   iteration_f = 100,
-##-------------------------------- algorithms ---------------------------------##
+#|-------------------------------- algorithms ---------------------------------|#
   nc = 1,                 # <nc > 1>: parallel computation across subjects
   # Base R Optimization
   algorithm = "L-BFGS-B"  # Gradient-Based (stats)
-##-----------------------------------------------------------------------------##
+#|-----------------------------------------------------------------------------|#
   # Specialized External Optimization
   #algorithm = "GenSA"    # Simulated Annealing (GenSA)
   #algorithm = "GA"       # Genetic Algorithm (GA)
@@ -251,11 +334,11 @@ recovery <- binaryRL::rcv_d(
   #algorithm = "PSO"      # Particle Swarm Optimization (pso)
   #algorithm = "Bayesian" # Bayesian Optimization (mlrMBO)
   #algorithm = "CMA-ES"   # Covariance Matrix Adapting (cmaes)
-##-----------------------------------------------------------------------------##
+#|-----------------------------------------------------------------------------|#
   # Optimization Library (nloptr)
   #algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")
-##-------------------------------- algorithms ---------------------------------##
-#################################################################################
+#|-------------------------------- algorithms ---------------------------------|#
+#+#############################################################################+#
 )
 
 result <- dplyr::bind_rows(recovery) \%>\%

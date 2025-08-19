@@ -1,6 +1,6 @@
-\name{Mason_2024_Exp2}
-\alias{Mason_2024_Exp2}
-\title{Experiment 2 from Mason et al. (2024)}
+\name{Mason_2024_G2}
+\alias{Mason_2024_G2}
+\title{Group 2 from Mason et al. (2024)}
 \description{
   This dataset originates from Experiment 2 of Mason et al. (2024),
   titled "Rare and extreme outcomes in risky choice"
@@ -45,7 +45,7 @@
   }
 }
 \examples{
-  # Load the Mason_2024_Exp2 dataset
-  data(binaryRL::Mason_2024_Exp2)
-  head(binaryRL::Mason_2024_Exp2)
+  # Load the Mason_2024_G2 dataset
+  data(binaryRL::Mason_2024_G2)
+  head(binaryRL::Mason_2024_G2)
 }

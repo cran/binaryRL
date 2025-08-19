@@ -9,31 +9,39 @@
 #' 
 #' @note 
 #' When customizing these functions, please ensure that you do not modify 
-#'  the arguments. Instead, only modify the `if-else` statements or the internal 
-#'  logic to adapt the function to your needs.
+#'  the arguments. Instead, only modify the \code{if-else} statements or 
+#'  the internal logic to adapt the function to your needs.
 #' 
-#' @param i 
+#' @param i [numeric]
+#' 
 #' The current row number.
 #' 
-#' @param L_freq 
+#' @param L_freq [numeric]
+#'  
 #' The frequency of left option appearance
 #' 
-#' @param R_freq 
+#' @param R_freq [numeric]
+#'  
 #' The frequency of right option appearance
 #' 
-#' @param L_pick 
+#' @param L_pick [numeric]
+#'  
 #' The number of times left option was picked
 #' 
-#' @param R_pick 
+#' @param R_pick [numeric]
+#'  
 #' The number of times left option was picked
 #' 
-#' @param L_value 
+#' @param L_value [numeric]
+#'  
 #' The value of the left option with bias (if pi != 0)
 #' 
-#' @param R_value 
+#' @param R_value [numeric]
+#'  
 #' The value of the right option with bias (if pi != 0)
 #' 
 #' @param var1 [character] 
+#' 
 #' Column name of extra variable 1. If your model uses more than just reward 
 #'  and expected value, and you need other information, such as whether the 
 #'  choice frame is Gain or Loss, then you can input the 'Frame' column as 
@@ -42,39 +50,71 @@
 #'  \code{default: var1 = "Extra_Var1"}
 #' 
 #' @param var2 [character] 
+#' 
 #' Column name of extra variable 2. If one additional variable, var1, does not 
 #'  meet your needs, you can add another additional variable, var2, into your 
 #'  model.
 #'  
-#'  \code{default: var2 = "Extra_Var2"}
+#'  default: \code{var2 = "Extra_Var2"}
 #'  
-#' @param LR 
+#' @param LR [character] 
+#' 
 #' Are you calculating the probability for the left option or the right option?
+#' 
+#' \code{LR = "L"; LR = "R"}  
 #'  
-#' @param try 
+#' @param try [numeric]
+#'  
 #' If the choice was random, the value is 1; 
 #' If the choice was based on value, the value is 0.
 #' 
 #' @param tau [vector] 
-#' Parameters used in the Soft-Max Function. `prob_func` representing the 
-#'  sensitivity of the subject to the value difference when making decisions. 
-#'  It determines the probability of selecting the left option versus the right 
-#'  option based on their values. A larger value of tau indicates greater 
-#'  sensitivity to the value difference between the options. In other words, 
-#'  even a small difference in value will make the subject more likely to 
-#'  choose the higher-value option. 
+#' 
+#' Parameters used in the Soft-Max Function. \code{prob_func} 
+#'  representing the sensitivity of the subject to the value difference when 
+#'  making decisions. It determines the probability of selecting the left option 
+#'  versus the right option based on their values. A larger value of tau 
+#'  indicates greater sensitivity to the value difference between the options. 
+#'  In other words, even a small difference in value will make the subject more 
+#'  likely to choose the higher-value option. 
 #'  
-#'  \deqn{
-#'    P_L = \frac{1}{1+e^{-(V_L-V_R) \cdot \tau}}; 
-#'    P_R = \frac{1}{1+e^{-(V_R-V_L) \cdot \tau}}
-#'  } 
+#'  \deqn{P_L = \frac{1}{1+e^{-(V_L-V_R) \cdot \tau}}; P_R = \frac{1}{1+e^{-(V_R-V_L) \cdot \tau}}} 
 #' 
 #'  \code{e.g., tau = c(0.5)}
 #' 
-#' @param alpha [vector]
+#' @param lapse [numeric] 
+#' 
+#' A numeric value between 0 and 1, representing the lapse rate.
+#' 
+#' You can interpret this parameter as the probability of the agent "slipping"
+#'  or making a random choice, irrespective of the learned action values. This
+#'  accounts for moments of inattention or motor errors. In this sense, it
+#'  represents the minimum probability with which any given option will be
+#'  selected. It is a free parameter that acknowledges that individuals do not
+#'  always make decisions with full concentration throughout an experiment.
+#'  
+#' From a modeling perspective, the lapse rate is crucial for preventing the
+#'  log-likelihood calculation from returning \code{-Inf}. This issue arises 
+#'  when the model assigns a probability of zero to an action that the 
+#'  participant actually chose (\code{log(0)} is undefined). By ensuring every 
+#'  option has a non-zero minimum probability, the \code{lapse} parameter makes 
+#'  the fitting process more stable and robust against noise in the data.
+#'  
+#'  \deqn{
+#'    P_{final} = (1 - lapse) \cdot P_{softmax} + \frac{lapse}{N_{choices}}
+#'  }
+#'  
+#' \code{default: lapse = 0.02} 
+#' 
+#' This ensures each option has a minimum selection probability of 1 percent 
+#'  in TAFC tasks. 
+#' 
+#' @param alpha [vector] 
+#' 
 #' Extra parameters that may be used in functions. 
 #'
-#' @param beta [vector]
+#' @param beta [vector] 
+#' 
 #' Extra parameters that may be used in functions. 
 #' 
 #' @return The probability of choosing this option
@@ -96,35 +136,59 @@
 #'   # Extra variables
 #'   var1 = NA,
 #'   var2 = NA,
-#'   
+#'
 #'   # Whether calculating probability for left or right choice
 #'   LR,
 #'   # Is it a random choosing trial?
 #'   try,
-#'   
-#'   # Free parameter
-#'   tau = 1,
+#'
+#'   # Free parameters
+#'   tau,
 #'   # Extra parameters
 #'   alpha,
 #'   beta
 #' ){
-#'   if (!(LR %in% c("L", "R"))) {
-#'     stop("LR = 'L' or 'R'")
-#'   }
-#' ############################### [ value-based ] #############################
-#'   else if (try == 0 & LR == "L") {
-#'     prob <- 1 / (1 + exp(-(L_value - R_value) * tau))
-#'   }
-#'   else if (try == 0 & LR == "R") {
-#'     prob <- 1 / (1 + exp(-(R_value - L_value) * tau))
-#'   }
-#' ################################# [ random ] ################################
-#'   else if (try == 1) {
+#' ############################### [ random ] ##################################
+#'   if (try == 1) {
 #'     prob <- 0.5
 #'   }
-#'   else {
-#'     prob <- "ERROR" # Error check
+#' ############################# [ greedy-max ] ################################
+#'   else if (try == 0 & LR == "L" & is.na(tau)) {
+#'     if (L_value == R_value) {
+#'       prob <- 0.5
+#'     }
+#'     else if (L_value > R_value) {
+#'       prob <- 1
+#'     }
+#'     else if (L_value < R_value) {
+#'       prob <- 0
+#'     }
 #'   }
+#'   else if (try == 0 & LR == "R" & is.na(tau)) {
+#'     if (L_value == R_value) {
+#'       prob <- 0.5
+#'     }
+#'     else if (R_value > L_value) {
+#'       prob <- 1
+#'     }
+#'     else if (R_value < L_value) {
+#'       prob <- 0
+#'     }
+#'   }
+#' ############################### [ soft-max ] ################################
+#'   else if (try == 0 & LR == "L" & !(is.na(tau))) {
+#'     prob <- 1 / (1 + exp(-(L_value - R_value) * tau))
+#'   }
+#'   else if (try == 0 & LR == "R" & !(is.na(tau))) {
+#'     prob <- 1 / (1 + exp(-(R_value - L_value) * tau))
+#'   }
+#' ################################ [ error ] ##################################
+#'   else {
+#'     prob <- "ERROR"
+#'   }
+#' ################################ [ lapse ] ##################################  
+#' 
+#'   prob <- (1 - lapse) * prob + (lapse / 2)
 #'
 #'   return(prob)
 #' }
@@ -153,28 +217,53 @@ func_tau <- function(
   try,
   
   # 自由参数
-  tau = 1,
+  tau,
+  lapse,
   # 额外参数
   alpha,
   beta
 ){
-  if (!(LR %in% c("L", "R"))) {
-    stop("LR = 'L' or 'R'")
-  }
-############################### [ value-based ] ################################
-  else if (try == 0 & LR == "L") {
-    prob <- 1 / (1 + exp(-(L_value - R_value) * tau))
-  }
-  else if (try == 0 & LR == "R") {
-    prob <- 1 / (1 + exp(-(R_value - L_value) * tau))
-  }
-################################# [ random ] ###################################
-  else if (try == 1) {
+################################# [ random ] ###################################  
+  if (try == 1) {
     prob <- 0.5
   } 
+############################### [ greedy-max ] #################################
+  else if (try == 0 & LR == "L" & is.na(tau)) {
+    if (L_value == R_value) {
+      prob <- 0.5
+    } 
+    else if (L_value > R_value) {
+      prob <- 1
+    }
+    else if (L_value < R_value) {
+      prob <- 0
+    }
+  }
+  else if (try == 0 & LR == "R" & is.na(tau)) {
+    if (L_value == R_value) {
+      prob <- 0.5
+    } 
+    else if (R_value > L_value) {
+      prob <- 1
+    }
+    else if (R_value < L_value) {
+      prob <- 0
+    }
+  }
+################################ [ soft-max ] ##################################
+  else if (try == 0 & LR == "L" & !(is.na(tau))) {
+    prob <- 1 / (1 + exp(-(L_value - R_value) * tau))
+  }
+  else if (try == 0 & LR == "R" & !(is.na(tau))) {
+    prob <- 1 / (1 + exp(-(R_value - L_value) * tau))
+  }
+################################# [ error ] ####################################
   else {
     prob <- "ERROR"
   }
+################################# [ lapse ] ####################################  
+  
+  prob <- (1 - lapse) * prob + (lapse / 2)
   
   return(prob)
 }

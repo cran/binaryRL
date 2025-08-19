@@ -6,15 +6,15 @@
 \alias{binaryRL}
 \title{binaryRL: Reinforcement Learning Tools for Two-Alternative Forced Choice Tasks}
 \description{
-Tools for building reinforcement learning (RL) models specifically tailored for Two-Alternative Forced Choice (TAFC) tasks, commonly employed in psychological research. These models build upon the foundational principles of model-free reinforcement learning detailed in Sutton and Barto (2018) <ISBN:9780262039246>. The package allows for the intuitive definition of RL models using simple if-else statements. Our approach to constructing and evaluating these computational models is informed by the guidelines proposed in Wilson & Collins (2019) \doi{10.7554/eLife.49547}. Example datasets included with the package are sourced from the work of Mason et al. (2024) \doi{10.3758/s13423-023-02415-x}.
+Tools for building Rescorla-Wagner Models for Two-Alternative Forced Choice tasks, commonly employed in psychological research. Most concepts and ideas within this R package are referenced from Sutton and Barto (2018) <ISBN:9780262039246>. The package allows for the intuitive definition of RL models using simple if-else statements and three basic models built into this R package are referenced from Niv et al. (2012)\doi{10.1523/JNEUROSCI.5498-10.2012}. Our approach to constructing and evaluating these computational models is informed by the guidelines proposed in Wilson & Collins (2019) \doi{10.7554/eLife.49547}. Example datasets included with the package are sourced from the work of Mason et al. (2024) \doi{10.3758/s13423-023-02415-x}.
 }
 \section{Example Data}{
 
  \itemize{
-   \item \code{\link[binaryRL]{Mason_2024_Exp1}}: 
-     Experiment 1 of Mason et al. (2024)
-   \item \code{\link[binaryRL]{Mason_2024_Exp2}}: 
-     Experiment 2 of Mason et al. (2024)
+   \item \code{\link[binaryRL]{Mason_2024_G1}}: 
+     Group 1 of Mason et al. (2024)
+   \item \code{\link[binaryRL]{Mason_2024_G2}}: 
+     Group 2 of Mason et al. (2024)
 }
 }
 
@@ -47,20 +47,30 @@ Tools for building reinforcement learning (RL) models specifically tailored for 
 \section{Functions}{
 
 \itemize{
-  \item \code{\link[binaryRL]{func_gamma}}: Utility Function
-  \item \code{\link[binaryRL]{func_eta}}: Learning Rate 
-  \item \code{\link[binaryRL]{func_epsilon}}: Exploration Strategy
-  \item \code{\link[binaryRL]{func_pi}}: Upper-Confidence-Bound
-  \item \code{\link[binaryRL]{func_tau}}: Soft-Max
+  \item \code{\link[binaryRL]{func_gamma}}: 
+   Utility Function
+  \item \code{\link[binaryRL]{func_eta}}: 
+   Learning Rate
+  \item \code{\link[binaryRL]{func_epsilon}}: 
+   Epsilon Related
+  \item \code{\link[binaryRL]{func_pi}}: 
+   Upper-Confidence-Bound
+  \item \code{\link[binaryRL]{func_tau}}: 
+   Soft-Max
+  \item \code{\link[binaryRL]{func_logl}}: 
+   Loss Function
 }
 }
 
 \section{Processes}{
  
  \itemize{
-   \item \code{\link[binaryRL]{optimize_para}}: optimizing free parameters
-   \item \code{\link[binaryRL]{simulate_list}}: simulating fake datasets
-   \item \code{\link[binaryRL]{recovery_data}}: parameter and model recovery
+   \item \code{\link[binaryRL]{optimize_para}}: 
+     optimizing free parameters
+   \item \code{\link[binaryRL]{simulate_list}}: 
+     simulating fake datasets
+   \item \code{\link[binaryRL]{recovery_data}}: 
+     parameter and model recovery
 }
 }
 

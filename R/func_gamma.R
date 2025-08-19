@@ -25,8 +25,8 @@
 #' 
 #' @note 
 #' When customizing these functions, please ensure that you do not modify 
-#'  the arguments. Instead, only modify the `if-else` statements or the internal 
-#'  logic to adapt the function to your needs.
+#'  the arguments. Instead, only modify the \code{if-else} statements or 
+#'  the internal logic to adapt the function to your needs.
 #' 
 #' @param i 
 #' The current row number.
@@ -77,7 +77,8 @@
 #' The number of times the same stimulus has been chosen.
 #' 
 #' @param gamma [vector]
-#' This parameter represents the exponent in utility functions, specifically:
+#' This parameter represents the exponent in utility functions, 
+#'  \code{fcun_gamma}, specifically:
 #'  \itemize{
 #'    \item \strong{Stevens' Power Law}:
 #'    Utility is modeled as:
@@ -146,7 +147,7 @@
 #' }
 #' 
 func_gamma <- function(
-    # 试次序号
+  # 试次序号
   i,
   # 该选项出现了几次
   L_freq,

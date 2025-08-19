@@ -1,80 +1,83 @@
-#' Calculate the Model Fit
-#'
-#' @param data [data.frame] A data frame resulting from the 'step5' process of the `decision_making` function. 
-#' 
-#' @param L_choice [character] column name of left choice. 
-#'  e.g., `L_choice = "Left_Choice"`
-#' 
-#' @param R_choice [character] column name of right choice. 
-#'  e.g., `R_choice = "Right_Choice"`
-#' 
-#' @param sub_choose [character] column name of choices made by the subject. 
-#'  e.g., `sub_choose = "Choose"`
-#'
-#' @returns data frame:
-#'   \itemize{
-#'     \item{\code{data}: step5 + ACC + logL.}
-#'   }
-#'   
-#' @noRd
-#' 
 model_fit <- function(
   data, 
+  loss_func,
+  alpha,
+  beta,
+  var1,
+  var2,
   L_choice = "L_choice", 
   R_choice = "R_choice", 
   sub_choose = "Sub_Choose"
 ){
+  # 删除第一行赋予的初始值
+  data <- data[-1, ]
+  
   # 如果输入了sub_choose, 就计算rob_choose和sub_choose的匹配度
   if (is.character(sub_choose)) {
     # 重新命名成Sub_Choose
     colnames(data)[colnames(data) == sub_choose] <- "Sub_Choose"
   }
   
-  # 计算ACC
-  data$ACC <- NA
+  # ACC & LL
+  # 记录人类选了左还是右
+  chose_L <- (data$Sub_Choose == data[[L_choice]])
+  chose_R <- (data$Sub_Choose == data[[R_choice]])
   
-  for (i in 1:nrow(data)){
-    if (data$Sub_Choose[i] == data$Rob_Choose[i]) {
-      data$ACC[i] <- 1
-    } else if (data$Sub_Choose[i] != data$Rob_Choose[i]) {
-      data$ACC[i] <- 0
-    } else {
-      data$ACC[i] <- "ERROR"
-    }
-  }
+  # 如果选了左, 就是左 = 1, 右 = 0, 反之亦然
+  data$L_dir <- as.integer(chose_L & !chose_R)
+  data$R_dir <- as.integer(chose_R & !chose_L)
   
-  # 计算logL
-  data$L_dir <- NA
-  data$R_dir <- NA
+  # 如果人类选择和机器人选择一样, 这ACC为1, 否则为0
+  data$ACC <- as.integer(data$Sub_Choose == data$Rob_Choose)
   
-  for (i in 1:nrow(data)){
-    if (
-      data$Sub_Choose[i] == data[[L_choice]][i] & 
-      data$Sub_Choose[i] != data[[R_choice]][i]
-    ) {
-      data$L_dir[i] <- 1
-      data$R_dir[i] <- 0
-    } else if (
-      data$Sub_Choose[i] != data[[L_choice]][i] & 
-      data$Sub_Choose[i] == data[[R_choice]][i]
-    ) {
-      data$L_dir[i] <- 0
-      data$R_dir[i] <- 1
-    } else if (
-      data$Sub_Choose[i] == data[[L_choice]][i] & 
-      data$Sub_Choose[i] == data[[R_choice]][i]
-    ) {
-      data$L_dir[i] <- 0
-      data$R_dir[i] <- 0
-    } else {
-      data$L_dir[i] <- "ERROR"
-      data$R_dir[i] <- "ERROR"
-    }
-  }
+  # 向量型计算, 重点在于i = 1:nrow(data), 避免了循环
+  data$L_logl <- loss_func(
+    i = 1:nrow(data), 
+    L_freq = data$L_freq,
+    R_freq = data$R_freq,
+    L_pick = data$L_pick,
+    R_pick = data$R_pick,
+    L_value = data$L_value,
+    R_value = data$R_value,
+    L_dir = data$L_dir,
+    R_dir = data$R_dir,
+    L_prob = data$L_prob,
+    R_prob = data$R_prob,
+    var1 = data[[var1]],
+    var2 = data[[var2]],
+    try = data$Try,
+    LR = "L", 
+    value = data$V_value,
+    utility = data$R_utility,
+    reward = data$Reward,
+    occurrence = data$Occurrence,
+    alpha = alpha,
+    beta = beta
+  )
   
-  # logL
-  data$L_logl <- data$L_dir * log(data$L_prob + 1e-10)
-  data$R_logl <- data$R_dir * log(data$R_prob + 1e-10)
-  
+  data$R_logl <- loss_func(
+    i = 1:nrow(data),
+    L_freq = data$L_freq,
+    R_freq = data$R_freq,
+    L_pick = data$L_pick,
+    R_pick = data$R_pick,
+    L_value = data$L_value,
+    R_value = data$R_value,
+    L_dir = data$L_dir,
+    R_dir = data$R_dir,
+    L_prob = data$L_prob,
+    R_prob = data$R_prob,
+    var1 = data[[var1]],
+    var2 = data[[var2]],
+    try = data$Try,
+    LR = "R", 
+    value = data$V_value,
+    utility = data$R_utility,
+    reward = data$Reward,
+    occurrence = data$Occurrence,
+    alpha = alpha,
+    beta = beta
+  )
+
   return(data)
 }

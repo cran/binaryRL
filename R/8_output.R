@@ -1,92 +1,19 @@
-#' Summary the Results
-#'
-#' @param data [data.frame] A data frame resulting from the 'step7' process of the `digits` function. 
-#' 
-#' @param n_params [integer] The number of free parameters in your model. 
-#' 
-#' @param n_trials [integer] The total number of trials in your experiment.
-#' 
-#' @param initial_value [numeric] 
-#' Subject's initial expected value for each stimulus's reward. If this value 
-#'  is not set (`initial_value = NA`), the subject will use the reward received 
-#'  after the first trial as the initial value for that stimulus. In other 
-#'  words, the learning rate for the first trial is 100%. 
-#'  default: `initial_value = NA` e.g., `initial_value = 0`
-#'  
-#' @param threshold [integer]
-#' Controls the initial exploration phase in the \strong{epsilon-first} strategy.
-#'  This is the number of early trials where the subject makes purely random
-#'  choices, as they haven't yet learned the options' values. For example,
-#'  `threshold = 20` means random choices for the first 20 trials.
-#'  For \strong{epsilon-greedy} or \strong{epsilon-decreasing} strategies,
-#'  `threshold` should be kept at its default value.
-#'  Default: `threshold = 1`
-#'  
-#' @param alpha [vector]
-#' Extra parameters that may be used in functions. 
-#'
-#' @param beta [vector]
-#' Extra parameters that may be used in functions. 
-#' 
-#' @param gamma [vector] Parameters used in the `util_func` (Utility Function), 
-#'  often referred to as the discount rate. For example, 
-#'  `utility = gamma * reward`, if gamma < 1, it indicates that people 
-#'  tend to discount the objective reward. Provide the value as a vector 
-#'  e.g., `gamma = c(0.7)`
-#' 
-#' @param eta [vector] Parameters used in the `rate_func` (Learning Rate Function), 
-#'  representing the rate at which the subject updates the 
-#'  difference (prediction error) between the reward and the expected value 
-#'  in the subject's mind. In the TD model, there is a single learning rate 
-#'  throughout the experiment. In the RSTD model, two different learning rates 
-#'  are used when the reward is higher or lower than the expected value.
-#'  e.g., `eta = c(0.3, 0.7)`
-#' 
-#' @param epsilon [numeric]
-#' A parameter used in the \strong{epsilon-greedy} exploration strategy. It defines
-#'  the probability of making a completely random choice, as opposed to choosing
-#'  based on the relative values of the left and right options. For example,
-#'  if `epsilon = 0.1`, the subject has a 10% chance of random choice and a
-#'  90% chance of value-based choice. This parameter is only relevant when
-#'  `threshold` is at its default value (1) and `lambda` is not set.
-#'  e.g., `epsilon = 0.1`
-#' 
-#' @param lambda [vector] 
-#' A numeric value that controls the decay rate of exploration probability
-#'  in the \strong{epsilon-decreasing} strategy. A higher `lambda` value
-#'  means the probability of random choice will decrease more rapidly
-#'  as the number of trials increases.
-#' 
-#' @param tau [vector] Parameters used in the `prob_func` (Soft-Max Function), 
-#'  representing the sensitivity of the subject to the value difference when 
-#'  making decisions. It determines the probability of selecting the left option 
-#'  versus the right option based on their values. A larger value of tau 
-#'  indicates greater sensitivity to the value difference between the options. 
-#'  In other words, even a small difference in value will make the subject more 
-#'  likely to choose the higher-value option. 
-#'  e.g., `tau = c(0.5)`
-#'
-#' @returns binaryRL[list]:
-#'   \itemize{
-#'     \item{\code{data}: output data frame with all information}
-#'     \item{\code{params}: all parameters value}
-#'     \item{\code{numeric}: ACC}
-#'     \item{\code{numeric}: LogL}
-#'     \item{\code{numeric}: AIC}
-#'     \item{\code{numeric}: BIC}
-#'   }
-#'   
-#' @noRd
-#' 
 output <- function(
+    mode, policy,
+    name = NA,
     data, 
     n_params, n_trials, 
-    initial_value, threshold,
-    alpha, beta, gamma, eta, epsilon, lambda, pi, tau
+    initial_value, threshold, lapse,
+    alpha, beta, gamma, eta, epsilon, lambda, pi, tau,
+    priors
 ){
+  # 去掉行名
+  rownames(data) <- NULL 
+  
   params <- list(
-    EV_1 = initial_value,
+    Q1 = initial_value,
     threshold = threshold,
+    lapse = lapse,
     
     alpha = c(alpha),
     beta = c(beta),
@@ -98,18 +25,66 @@ output <- function(
     tau = c(tau)
   )
   
-  # 因为第一行用来填写初始值了, 所以需要重新把第二行初始化成第一行
-  rownames(data) <- NULL 
-  mean_ACC <- round(mean(data$ACC), 4) * 100
-  sum_LL <- round(sum(data$L_logl) + sum(data$R_logl), digits = 2)
-  AIC <- round(2 * n_params - 2 * sum_LL, digits = 2)
-  BIC <- round(n_params * log(n_trials) - 2 * sum_LL, digits = 2)
+  # 计算正确率
+  mean_ACC <- round(mean(data$ACC), digits = 4) * 100
+  
+  # Log-Likelihood
+  sum_logLi <- round(sum(data$L_logl) + sum(data$R_logl), digits = 2)
+  
+  # 如果没有输入先验分布, 则说明使用的是MLE
+  if (is.null(priors)) {
+    estimate <- "MLE"
+    sum_logPr <- NA
+    sum_logPo <- NA
+  }
+  # 输入了先验分布, 就计算后验概率
+  else {
+    estimate <- "MAP"
+    # 找到priors定义了几类参数的先验概率
+    priors_name <- unique(names(priors))
+    
+    # 存储自由参数的数值
+    params_value <- c()
+    
+    # 定义了先验概率的才是自由参数
+    for (param_name in priors_name) {
+      # 把带入run_m的自由参数存在params_value中
+      params_value <- c(params_value, params[[param_name]])
+    }
+    
+    # 初始化Log Prior Probability
+    logPr <- c()
+    
+    for (i in 1:length(priors)) {
+      # 使用先验分布概率, 计算该参数对应的概率密度
+      logPr[i] <- priors[[i]](params_value[i])
+    }
+    
+    # 求和每个参数对应的log先验概率密度
+    sum_logPr <- sum(logPr)
+    
+    # Log-Posterior Probability
+    sum_logPo <- sum_logLi + sum_logPr
+  }
+  
+  if (mode != "fit") {
+    estimate <- NA
+  }
+
+  AIC <- round(2 * n_params - 2 * sum_logLi, digits = 2)
+  BIC <- round(n_params * log(n_trials) - 2 * sum_logLi, digits = 2)
   
   res <- list(
     data = data,
     params = params,
+    name = name,
+    mode = mode,
+    policy = policy,
+    estimate = estimate,
     acc = mean_ACC,
-    ll = sum_LL,
+    ll = sum_logLi,
+    lpr = sum_logPr,
+    lpo = sum_logPo,
     aic = AIC,
     bic = BIC
   )
