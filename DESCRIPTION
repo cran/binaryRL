@@ -1,5 +1,5 @@
 Package: binaryRL
-Version: 0.9.7
+Version: 0.9.8
 Title: Reinforcement Learning Tools for Two-Alternative Forced Choice
         Tasks
 Description: Tools for building Rescorla-Wagner Models for Two-Alternative 
@@ -36,7 +36,7 @@ LinkingTo: Rcpp
 Suggests: stats, GenSA, GA, DEoptim, pso, mlrMBO, mlr, ParamHelpers,
         smoof, lhs, DiceKriging, rgenoud, cmaes, nloptr
 NeedsCompilation: yes
-Packaged: 2025-08-19 10:07:55 UTC; hmz19
+Packaged: 2025-10-28 10:38:22 UTC; hmz19
 Author: YuKi [aut, cre] (ORCID: <https://orcid.org/0009-0000-1378-1318>)
 Repository: CRAN
-Date/Publication: 2025-08-19 23:50:02 UTC
+Date/Publication: 2025-10-28 11:00:09 UTC

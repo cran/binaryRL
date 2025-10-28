@@ -62,6 +62,45 @@
 #'     more suitable.}
 #' }
 #'  
+#' @param estimate [string] 
+#' 
+#'   Estimation method. Can be either \code{"MLE"} or \code{"MAP"}.
+#'   \itemize{
+#'     \item{\strong{Maximum Likelihood Estimation} \code{"MLE"}: (Default): 
+#'       This method finds the parameter values that maximize the log-likelihood
+#'       of the data. A higher log-likelihood indicates that the parameters
+#'       provide a better explanation for the observed human behavior. In
+#'       other words, data simulated using these parameters would most
+#'       closely resemble the actual human data. This method does not
+#'       consider any prior information about the parameters.}
+#'       
+#'     \item{\strong{Maximum A Posteriori Estimation} \code{"MAP"}: This method
+#'       finds the parameter values that maximize the posterior probability.
+#'       It is an iterative process based on the Expectation-Maximization
+#'       (EM) framework.
+#'       
+#'       \itemize{
+#'         \item{\strong{Initialization}: The process begins by assuming a
+#'           uniform distribution as the prior for each parameter, making the
+#'           initial log-prior zero. The first optimization is thus
+#'           equivalent to MLE.}
+#'         \item{\strong{Iteration}: After finding the best parameters for
+#'           all subjects, the algorithm assesses the actual distribution of
+#'           each parameter and fits a normal distribution to it. This
+#'           fitted distribution becomes the new empirical prior.}
+#'         \item{\strong{Re-estimation}: The parameters are then re-optimized
+#'           to maximize the updated posterior probability.}
+#'         \item{\strong{Convergence}: This cycle repeats until the posterior
+#'           probability converges or the maximum number of iterations is 
+#'           reached.}
+#'       }
+#'       Using this method requires that the \code{priors} argument
+#'       be specified to define the initial prior distributions.
+#'     }
+#'    }
+#' 
+#' default: \code{estimate = "MLE"}
+#'  
 #' @param policy [string]
 #' 
 #' Specifies the learning policy to be used.
@@ -80,7 +119,7 @@
 #'     representation that likely drove the participant's decisions.
 #'   }
 #'   \item {
-#'    \strong{Off-Policy (SARSA): }
+#'    \strong{On-Policy (SARSA): }
 #'    In this mode, the target policy and the behavior policy are identical. 
 #'     The model first computes the selection probability for each option based 
 #'     on their current values. Critically, it then uses these probabilities to 
@@ -92,45 +131,6 @@
 #'  }
 #'  
 #' default: \code{policy = "off"}
-#'  
-#' @param estimate [string] 
-#' 
-#'   Estimation method. Can be either \code{"MLE"} or \code{"MAP"}.
-#'   \itemize{
-#'     \item{\code{"MLE"}: (Default) Maximum Likelihood Estimation. This
-#'       method finds the parameter values that maximize the log-likelihood
-#'       of the data. A higher log-likelihood indicates that the parameters
-#'       provide a better explanation for the observed human behavior. In
-#'       other words, data simulated using these parameters would most
-#'       closely resemble the actual human data. This method does not
-#'       consider any prior information about the parameters.}
-#'       
-#'     \item{\code{"MAP"}: Maximum A Posteriori Estimation. This method
-#'       finds the parameter values that maximize the posterior probability.
-#'       It is an iterative process based on the Expectation-Maximization
-#'       (EM) framework.
-#'       
-#'       \itemize{
-#'         \item{\strong{Initialization}: The process begins by assuming a
-#'           uniform distribution as the prior for each parameter, making the
-#'           initial log-prior zero. The first optimization is thus
-#'           equivalent to MLE.}
-#'         \item{\strong{Iteration}: After finding the best parameters for
-#'           all subjects, the algorithm assesses the actual distribution of
-#'           each parameter and fits a normal distribution to it. This
-#'           fitted distribution becomes the new empirical prior.}
-#'         \item{\strong{Re-estimation}: The parameters are then re-optimized
-#'           to maximize the updated posterior probability.}
-#'         \item{\strong{Convergence}: This cycle repeats until the posterior
-#'           probability converges or the maximum number of iterations
-#'           (specified by \code{iteration_g}) is reached.}
-#'       }
-#'       Using this method requires that the \code{priors} argument
-#'       be specified to define the initial prior distributions.
-#'     }
-#'    }
-#' 
-#' default: \code{estimate = "MLE"}
 #'  
 #' @param data [data.frame] 
 #' 
@@ -207,18 +207,6 @@
 #' 
 #' e.g. \code{fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility)}
 #' 
-#' @param lower [List] 
-#' 
-#' The lower bounds for model fit models
-#' 
-#' e.g. \code{lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0))}
-#' 
-#' @param upper [List] 
-#' 
-#' The upper bounds for model fit models
-#' 
-#' e.g. \code{upper = list(c(1, 10), c(1, 1, 10), c(1, 1, 10))}
-#' 
 #' @param priors [List]
 #' 
 #'  A list specifying the prior distributions for the model parameters.
@@ -232,8 +220,8 @@
 #'     \item{Configuration:}{
 #'       \itemize{
 #'         \item{Set \code{estimate = "MAP"}.}
-#'         \item{Provide a \code{list} defining your confident prior
-#'           distributions.}
+#'         \item{Provide \code{pirors} defining probability density function of
+#'          free parameters}
 #'         \item{Keep \code{iteration_g = 0} (the default).}
 #'       }
 #'     }
@@ -251,7 +239,7 @@
 #'       \itemize{
 #'         \item{Set \code{estimate = "MAP"}.}
 #'         \item{Specify a weak or non-informative initial prior, such as a
-#'           uniform distribution for all parameters.}
+#'           uniform distribution for all free parameters.}
 #'         \item{Set \code{iteration_g} to a value greater than 0.}
 #'       }
 #'     }
@@ -265,13 +253,17 @@
 #' 
 #'  default: \code{priors = NULL}
 #' 
-#' @param tolerance [double] 
+#' @param lower [List] 
 #' 
-#' Convergence threshold for MAP estimation. If the change in
-#'  log posterior probability between iterations is smaller than this value, the
-#'  algorithm is considered to have converged and the program will stop.
+#' The lower bounds for model fit models
 #' 
-#' default: \code{tolerance = 0.001}
+#' e.g. \code{lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0))}
+#' 
+#' @param upper [List] 
+#' 
+#' The upper bounds for model fit models
+#' 
+#' e.g. \code{upper = list(c(1, 5), c(1, 1, 5), c(1, 1, 5))}
 #' 
 #' @param initial_params [NumericVector]
 #' 
@@ -292,6 +284,21 @@
 #'  
 #'  default: \code{initial_size = 50}.
 #'  
+#' @param tolerance [double] 
+#' 
+#' Convergence threshold for MAP estimation. If the change in
+#'  log posterior probability between iterations is smaller than this value, the
+#'  algorithm is considered to have converged and the program will stop.
+#' 
+#' default: \code{tolerance = 0.001}
+#'  
+#' @param seed [integer] 
+#' 
+#' Random seed. This ensures that the results are 
+#'  reproducible and remain the same each time the function is run. 
+#'  
+#' default: \code{seed = 123}
+#'  
 #' @param iteration_i [integer] 
 #' 
 #' The number of iterations the optimization algorithm will perform
@@ -309,13 +316,6 @@
 #'  not yet fallen below the \code{tolerance} threshold.
 #' 
 #'  default: \code{iteration_g = 0}.
-#' 
-#' @param seed [integer] 
-#' 
-#' Random seed. This ensures that the results are 
-#'  reproducible and remain the same each time the function is run. 
-#'  
-#' default: \code{seed = 123}
 #'  
 #' @param nc [integer]
 #' 
@@ -346,6 +346,8 @@
 #'  you need to input a character vector. The first element represents
 #'  the algorithm used for global search, and the second element represents
 #'  the algorithm used for local search.
+#'  
+#' e.g. \code{algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")}
 #'
 #' @returns 
 #' The optimal parameters found by the algorithm for each subject,
@@ -357,19 +359,14 @@
 #' \dontrun{
 #' comparison <- binaryRL::fit_p(
 #'   data = binaryRL::Mason_2024_G2,
-#'   id = unique(binaryRL::Mason_2024_G2$Subject),
 #' #+-----------------------------------------------------------------------------+#
 #' #|----------------------------- black-box function ----------------------------|#
-#'   #funcs = c("your_funcs"),
-#'   policy = c("off", "on"),
-#'   fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
-#'   model_name = c("TD", "RSTD", "Utility"),
-#' #|--------------------------------- estimate ----------------------------------|#
+#'   funcs = c("your_funcs"),
 #'   estimate = c("MLE", "MAP"),
-#' #|------------------------------------ MLE ------------------------------------|#
-#'   lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
-#'   upper = list(c(1, 10), c(1, 1, 10), c(1, 1, 10)),
-#' #|------------------------------------ MAP ------------------------------------|#
+#'   policy = c("off", "on"),
+#'   model_name = c("TD", "RSTD", "Utility"),
+#' #|-------------------------------- fit models ---------------------------------|#
+#'   fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
 #'   priors = list(
 #'     list(
 #'       eta = function(x) {stats::dunif(x, min = 0, max = 1, log = TRUE)}, 
@@ -386,13 +383,16 @@
 #'       tau = function(x) {stats::dexp(x, rate = 1, log = TRUE)}
 #'     )
 #'   ),
+#' #|---------------------------------- bound ------------------------------------|#
+#'   lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
+#'   upper = list(c(1, 10), c(1, 1, 10), c(1, 1, 10)),
 #' #|----------------------------- iteration number ------------------------------|#
 #'   iteration_i = 10,
 #'   iteration_g = 10,
 #' #|-------------------------------- algorithms ---------------------------------|#
 #'   nc = 1,                 # <nc > 1>: parallel computation across subjects
 #'   # Base R Optimization
-#'   algorithm = "L-BFGS-B"  # Gradient-Based (stats)
+#'   #algorithm = "L-BFGS-B"  # Gradient-Based (stats)
 #' #|-----------------------------------------------------------------------------|#
 #'   # Specialized External Optimization
 #'   #algorithm = "GenSA"    # Simulated Annealing (GenSA)
@@ -403,7 +403,7 @@
 #'   #algorithm = "CMA-ES"   # Covariance Matrix Adapting (cmaes)
 #' #|-----------------------------------------------------------------------------|#
 #'   # Optimization Library (nloptr)
-#'   #algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")
+#'   algorithm = c("NLOPT_GN_MLSL", "NLOPT_LN_BOBYQA")
 #' #|-------------------------------- algorithms ---------------------------------|#
 #' #################################################################################
 #' )
@@ -419,9 +419,9 @@
 #' }
 #' 
 fit_p <- function(
+  estimate = "MLE",
   policy = "off",
-  estimate = "MLE",  
-  
+
   data,
   id = NULL,
   n_trials = NULL,
@@ -429,18 +429,18 @@ fit_p <- function(
   funcs = NULL,
   model_name = c("TD", "RSTD", "Utility"),
   fit_model = list(binaryRL::TD, binaryRL::RSTD, binaryRL::Utility),
-  lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
-  upper = list(c(1, 1), c(1, 1, 1), c(1, 1, 1)),
-  
   priors = NULL,
-  tolerance = 0.001,
   
-  iteration_i = 10,
-  iteration_g = 0,
+  lower = list(c(0, 0), c(0, 0, 0), c(0, 0, 0)),
+  upper = list(c(1, 5), c(1, 1, 5), c(1, 1, 5)),
   
   initial_params = NA,
   initial_size = 50,
+  tolerance = 0.001,
   seed = 123,
+  
+  iteration_i = 10,
+  iteration_g = 0,
   
   nc = 1,
   algorithm
@@ -462,7 +462,7 @@ fit_p <- function(
   model_comparison <- list()
   model_result <- list()
 
-################################ [ threads ] ###################################  
+############################### [ Parallel ] ###################################  
   
   sys <- Sys.info()[["sysname"]]
   
@@ -484,7 +484,7 @@ fit_p <- function(
   
   doFuture::registerDoFuture()
 
-############################# [ for loop models] ###############################
+################################# [ Models ] ###################################
     
   # 每个model都使用初始的priors
   params_priors <- list()
@@ -503,7 +503,7 @@ fit_p <- function(
     n_subjects <- length(id)
     n_params <- length(lower[[i]])
 
-########################### [ foreach loop subs ] ##############################    
+############################### [ Progress ] ###################################   
     
     # 进度条
     progressr::handlers(progressr::handler_txtprogressbar)
