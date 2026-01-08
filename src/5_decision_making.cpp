@@ -1,3 +1,4 @@
+#define RCPP_NO_REMAP
 #include <Rcpp.h>
 #include <random>
 
